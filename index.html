@@ -1,147 +1,244 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="utf-8">
-    <title>Wsido Xrtp ECHO - Pursuit Rework</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Wsido Xrtp ECHO - Readability Rework</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #000;
-            font-family: 'Courier New', monospace;
-            color: #00ffcc;
+        :root{
+            --cyan:#00ffcc;
+            --danger:#ff3b30;
+            --muted:#8a8a8a;
+            --bg:#000;
         }
-        #ui-root {
-            position: absolute;
-            inset: 0;
-            z-index: 1000;
-            pointer-events: none;
+        *{ box-sizing:border-box; }
+        body{
+            margin:0;
+            overflow:hidden;
+            background:#000;
+            color:var(--cyan);
+            font-family:"Courier New", monospace;
         }
-        .overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.95);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            pointer-events: all;
-            text-align: center;
-            padding: 24px;
-            box-sizing: border-box;
+        canvas{ display:block; }
+
+        #ui-root{
+            position:fixed;
+            inset:0;
+            z-index:10;
+            pointer-events:none;
         }
-        #game-hud {
-            position: absolute;
-            top: 18px;
-            left: 18px;
-            text-shadow: 0 0 10px #00ffcc;
-            display: none;
-            line-height: 1.65;
+
+        .overlay{
+            position:absolute;
+            inset:0;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            align-items:center;
+            background:rgba(0,0,0,0.96);
+            pointer-events:auto;
+            padding:24px;
+            text-align:center;
         }
-        #stage-indicator {
-            position: absolute;
-            top: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            text-align: center;
-            display: none;
+
+        h1,h2,p{ margin:0; }
+
+        #screen-menu h1,
+        #transition-overlay h1,
+        #summary-overlay h1,
+        #pause-overlay h1{
+            color:var(--cyan);
+            text-shadow:0 0 16px rgba(0,255,204,.25);
+            margin-bottom:14px;
         }
-        #env-name {
-            display: block;
-            font-size: 1.35rem;
-            color: #fff;
-            font-weight: bold;
-            letter-spacing: 2px;
+
+        #controls-hint{
+            color:#bdbdbd;
+            line-height:1.8;
+            max-width:760px;
+            margin:14px 0 20px;
+            font-size:15px;
         }
-        #threat-class {
-            display: block;
-            font-size: 0.95rem;
-            margin-top: 4px;
-            font-weight: bold;
+
+        #legend-box{
+            margin-top:10px;
+            color:#bdbdbd;
+            line-height:1.7;
+            font-size:14px;
+            max-width:760px;
         }
-        #msg-box {
-            position: absolute;
-            bottom: 20%;
-            width: 100%;
-            text-align: center;
-            font-size: 1.3rem;
-            color: #fff;
-            display: none;
-            pointer-events: none;
-            text-shadow: 0 0 12px rgba(255,255,255,0.35);
+
+        #death-reason{
+            display:none;
+            margin:12px 0 18px;
+            color:var(--danger);
+            font-weight:bold;
+            letter-spacing:1px;
+            font-size:16px;
         }
-        #noise-ui {
-            position: absolute;
-            bottom: 26px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 320px;
-            display: none;
-            text-align: center;
-            color: #aaa;
-            font-size: 0.95rem;
-            font-weight: bold;
+
+        #load-msg{
+            color:#8b8b8b;
+            margin-bottom:14px;
         }
-        #noise-bar-bg {
-            width: 100%;
-            height: 6px;
-            background: #222;
-            margin-top: 6px;
-            border: 1px solid #444;
+
+        button{
+            pointer-events:auto;
+            border:1px solid var(--cyan);
+            background:transparent;
+            color:var(--cyan);
+            padding:14px 34px;
+            margin:8px;
+            cursor:pointer;
+            font-family:inherit;
+            font-size:16px;
+            transition:.15s ease;
         }
-        #noise-bar {
-            width: 0%;
-            height: 100%;
-            background: #fff;
-            transition: width 0.08s linear, background 0.08s linear;
+        button:hover{
+            background:var(--cyan);
+            color:#000;
         }
-        #controls-hint {
-            color: #9aa;
-            font-size: 1rem;
-            margin: 18px 0 10px;
-            line-height: 1.8;
-            max-width: 720px;
+
+        #version-tag{
+            position:absolute;
+            right:12px;
+            bottom:10px;
+            font-size:12px;
+            color:#444;
         }
-        #death-reason {
-            color: #ff5252;
-            font-size: 1.1rem;
-            margin: 14px 0;
-            font-weight: bold;
-            display: none;
-            letter-spacing: 1px;
+
+        #game-hud{
+            position:absolute;
+            top:18px;
+            left:18px;
+            display:none;
+            text-shadow:0 0 10px rgba(0,255,204,.22);
+            line-height:1.6;
         }
-        #load-msg {
-            color: #888;
-            margin-top: 10px;
-            text-align: center;
+
+        #status-box{
+            position:absolute;
+            top:18px;
+            right:18px;
+            display:none;
+            text-align:right;
+            color:#ddd;
+            line-height:1.55;
+            font-size:15px;
+            text-shadow:0 0 10px rgba(255,255,255,.10);
         }
-        #version-tag {
-            position: absolute;
-            bottom: 10px;
-            right: 12px;
-            font-size: 0.8rem;
-            color: #444;
+
+        #stage-indicator{
+            position:absolute;
+            top:18px;
+            left:50%;
+            transform:translateX(-50%);
+            display:none;
+            text-align:center;
+            color:#d8d8d8;
+            line-height:1.35;
         }
-        button {
-            padding: 14px 36px;
-            border: 1px solid #00ffcc;
-            background: none;
-            color: #00ffcc;
-            cursor: pointer;
-            font-size: 1.08rem;
-            margin: 10px;
-            font-family: inherit;
+
+        #env-name{
+            display:block;
+            font-size:20px;
+            color:#fff;
+            font-weight:bold;
+            letter-spacing:2px;
         }
-        button:hover {
-            background: #00ffcc;
-            color: #000;
+
+        #threat-class{
+            display:block;
+            font-size:13px;
+            margin-top:4px;
+            font-weight:bold;
         }
-        .stats-text {
-            color: #fff;
-            font-size: 1.15rem;
-            margin: 20px 0;
-            text-align: center;
-            line-height: 1.8;
+
+        #msg-box{
+            position:absolute;
+            bottom:18%;
+            width:100%;
+            text-align:center;
+            font-size:24px;
+            color:#fff;
+            display:none;
+            pointer-events:none;
+            text-shadow:0 0 16px rgba(255,255,255,.2);
+            padding:0 20px;
+        }
+
+        #noise-ui{
+            position:absolute;
+            left:50%;
+            bottom:26px;
+            transform:translateX(-50%);
+            width:360px;
+            display:none;
+            text-align:center;
+            color:#aaa;
+            font-size:13px;
+            font-weight:bold;
+        }
+
+        #noise-text{
+            min-height:20px;
+            margin-bottom:6px;
+            letter-spacing:.5px;
+        }
+
+        #noise-bar-bg{
+            width:100%;
+            height:8px;
+            background:#1a1a1a;
+            border:1px solid #404040;
+            overflow:hidden;
+        }
+
+        #noise-bar{
+            width:0%;
+            height:100%;
+            background:#fff;
+            transition:width .08s linear, background .08s linear;
+        }
+
+        .stats-text{
+            color:#efefef;
+            line-height:1.9;
+            margin:16px 0 20px;
+            font-size:16px;
+            max-width:720px;
+        }
+
+        #edge-warning{
+            position:absolute;
+            inset:0;
+            pointer-events:none;
+            opacity:0;
+            transition:opacity .08s linear;
+            background:
+                radial-gradient(circle at left center, rgba(255,59,48,.35), transparent 28%),
+                radial-gradient(circle at right center, rgba(255,59,48,.35), transparent 28%),
+                radial-gradient(circle at center top, rgba(255,59,48,.18), transparent 25%),
+                radial-gradient(circle at center bottom, rgba(255,59,48,.18), transparent 25%);
+            mix-blend-mode:screen;
+        }
+
+        #crosshair{
+            position:absolute;
+            left:50%;
+            top:50%;
+            transform:translate(-50%,-50%);
+            width:10px;
+            height:10px;
+            border:1px solid rgba(255,255,255,.16);
+            border-radius:50%;
+            display:none;
+        }
+
+        .small-note{
+            color:#8c8c8c;
+            font-size:13px;
+            margin-top:4px;
         }
     </style>
 </head>
@@ -149,50 +246,69 @@
     <div id="ui-root">
         <div id="screen-menu" class="overlay">
             <h1 id="title-text">WSIDO XRTP ECHO: SOUND CELL</h1>
+
             <div id="controls-hint">
-                <b>[ 生存守則 ]</b><br>
-                WASD：移動　SHIFT：衝刺（高噪音）<br>
-                Stage 1：重拍會短暫揭露怪物位置，踩拍移動會更穩<br>
-                全關卡：可以透過靠近音的左右聲道，判斷怪物方位與距離<br>
-                收集 3 個音軌 → 找到撤離門 → 脫逃
+                <b>[ 操作 ]</b><br>
+                WASD：移動　|　SHIFT：衝刺（很吵）　|　滑鼠：視角　|　ESC：暫停<br>
+                <b>[ 目標 ]</b><br>
+                收集 3 個音軌碎片 → 開啟青色傳送門 → 進門通關<br>
+                <b>[ 重點 ]</b><br>
+                重拍會短暫揭露怪物位置。踩中拍移動會 <span style="color:#00ffcc">更快、且更安靜</span>，但<span style="color:#ff3b30">不是無敵</span>。
             </div>
-            <p id="load-msg">正在驗證數據協議...</p>
+
+            <div id="legend-box">
+                <b style="color:#ff3b30">紅色</b>＝危險（Alert / CHARGE / DASH / 極近距離）<br>
+                <b style="color:#00ffcc">青色</b>＝有利資訊（ON BEAT / 傳送門 / 成功收集 / 可撤離）<br>
+                這版沒有倒數時間。你可以繞、躲、拉扯，但腳步太大聲還是會把牠惹毛。
+            </div>
+
+            <p id="load-msg">正在同步音訊緩衝區…</p>
             <div id="death-reason"></div>
+
             <div id="btn-group" style="display:none;">
                 <button id="btn-tutorial">教學協議</button>
                 <button id="btn-start">啟動序列修復 (START)</button>
             </div>
-            <div id="version-tag">Pursuit Rework / No Timer / Audio Hunt</div>
+
+            <div id="version-tag">Rework Build - readable / looped / no timer</div>
         </div>
 
         <div id="transition-overlay" class="overlay" style="display:none;">
-            <h1 id="trans-title" style="color:#00ffcc;">STAGE CLEAR</h1>
+            <h1 id="trans-title">SECTOR CLEAR</h1>
             <p class="stats-text" id="trans-stats"></p>
             <button id="btn-next-stage">進入下一區域 (NEXT)</button>
         </div>
 
         <div id="summary-overlay" class="overlay" style="display:none;">
-            <h1 style="color:#00ffcc;">PROTOCOL COMPLETE</h1>
+            <h1>PROTOCOL COMPLETE</h1>
             <p class="stats-text" id="final-stats"></p>
             <button id="btn-return-menu">返回主系統 (MENU)</button>
         </div>
 
         <div id="pause-overlay" class="overlay" style="display:none;">
-            <h1 style="color:#f00;">系統掛起 (PAUSED)</h1>
+            <h1 style="color:#ff3b30;">系統掛起 (PAUSED)</h1>
+            <p class="stats-text">ESC 或按下按鈕繼續。</p>
             <button id="btn-resume">恢復連結</button>
         </div>
 
         <div id="stage-indicator">
             <span id="env-name">SECTOR</span>
             <span id="threat-class">THREAT: HUNTER</span>
+            <div class="small-note" id="assist-note">ASSIST: ON</div>
         </div>
 
         <div id="game-hud">
-            <b>[ 音律收復協議 ]</b><br>
-            DRUMS: <span style="color:white">ON</span> |
-            BASS: <span id="s1" style="color:#333">MISS</span> |
-            SYNTH: <span id="s2" style="color:#333">MISS</span> |
-            TEXTURE: <span id="s3" style="color:#333">MISS</span>
+            <b>[ 任務狀態 ]</b><br>
+            DRUMS: <span style="color:#fff">ON</span> |
+            BASS: <span id="s1" style="color:#333;">MISS</span> |
+            SYNTH: <span id="s2" style="color:#333;">MISS</span> |
+            TEXTURE: <span id="s3" style="color:#333;">MISS</span><br>
+            OBJECTIVE: <span id="objective-text">COLLECT 3 FRAGMENTS</span>
+        </div>
+
+        <div id="status-box">
+            <div id="status-main">SEARCHING…</div>
+            <div id="status-sub" class="small-note">怪物一直存在，紅色代表更危險。</div>
         </div>
 
         <div id="noise-ui">
@@ -201,6 +317,8 @@
         </div>
 
         <div id="msg-box"></div>
+        <div id="edge-warning"></div>
+        <div id="crosshair"></div>
     </div>
 
     <script type="importmap">
@@ -216,26 +334,30 @@
         import * as THREE from 'three';
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
+        // =========================
+        // 1) Core constants
+        // =========================
         const STATE = {
-            MENU: 'menu',
-            TUTORIAL: 'tutorial',
-            GAME: 'game',
-            WIN: 'win',
-            TRANSITION: 'transition',
-            SUMMARY: 'summary'
+            MENU:'menu',
+            TUTORIAL:'tutorial',
+            GAME:'game',
+            WIN:'win',
+            TRANSITION:'transition',
+            SUMMARY:'summary'
         };
 
         const AI_STATE = {
-            HUNT: 'hunt',
-            CHARGE: 'charge',
-            DASH: 'dash',
-            RECOVER: 'recover'
+            HUNT:'hunt',
+            CHARGE:'charge',
+            DASH:'dash',
+            RECOVER:'recover'
         };
 
         const DEATH_REASON = {
-            CONTACT: 'CLOSE CONTACT',
-            ALERT: 'ALERT CHASE',
-            DASH: 'PHASE DASH',
+            CONTACT:'CLOSE CONTACT',
+            ALERT_CHASE:'ALERT CHASE',
+            DASH_HIT:'PHASE DASH',
+            TRAPPED:'TRAPPED / CORNERED'
         };
 
         const BPM = 175;
@@ -245,103 +367,162 @@
         const ASSIST_PHASE = 0;
 
         const ON_BEAT_WINDOW = 0.10;
-        const ON_BEAT_SPEED_MULT = 1.20;
-        const ON_BEAT_NOISE_MULT = 0.35;
+        const ON_BEAT_SPEED_MULT = 1.18;
         const ON_BEAT_BUFF_TIME = 0.18;
+        const ON_BEAT_NOISE_MULT = 0.38;
 
         const GRID_SIZE = 6;
-        const STEM_COLORS = [0xffffff, 0x0088ff, 0xcc00ff, 0xffffff];
+        const WALL_VISUAL_SIZE = 5.2;
+        const WALL_COLLIDER_HALF = WALL_VISUAL_SIZE * 0.5;
+        const PLAYER_RADIUS = 0.82;
 
+        const STEM_COLORS = {
+            1:0x00aaff,  // bass
+            2:0xcc55ff,  // synth
+            3:0xffffff   // texture
+        };
+
+        const stemFiles = [
+            '0 Drums.mp3',
+            '1 Bass.mp3',
+            '2 Synth.mp3',
+            '3 Other.mp3',
+            'EEEEERORR.mp3'
+        ];
+
+        // Threat classes tuned for 175 BPM with breathing room
         const MONSTER_TYPES = {
             hunter: {
-                name: "HUNTER",
-                color: 0xff0000,
-                huntEvery: 2,
-                alertHuntEvery: 1,
-                base: 1,
-                end: 1,
-                alertBonus: 1,
-                chargeFreq: 12,
-                alertFreq: 6,
-                dash: 2,
-                chargeTime: 0.90
+                name:'HUNTER',
+                color:0xff3b30,
+                base:1,
+                end:2,
+                dash:3,
+                chargeFreq:12,
+                alertFreq:6,
+                moveEvery:2,
+                alertMoveEvery:1,
+                alertBonus:1,
+                lethalDist:1.55,
+                dashLethalDist:2.15
             },
             stalker: {
-                name: "STALKER",
-                color: 0xaa00ff,
-                huntEvery: 2,
-                alertHuntEvery: 1,
-                base: 1,
-                end: 1,
-                alertBonus: 1,
-                chargeFreq: 14,
-                alertFreq: 12,
-                dash: 2,
-                chargeTime: 1.00
+                name:'STALKER',
+                color:0xaa4dff,
+                base:1,
+                end:2,
+                dash:2,
+                chargeFreq:14,
+                alertFreq:12,
+                moveEvery:2,
+                alertMoveEvery:1,
+                alertBonus:2,
+                lethalDist:1.55,
+                dashLethalDist:2.0
             },
             rusher: {
-                name: "RUSHER",
-                color: 0xff5500,
-                huntEvery: 1,
-                alertHuntEvery: 1,
-                base: 1,
-                end: 1,
-                alertBonus: 0,
-                chargeFreq: 8,
-                alertFreq: 4,
-                dash: 4,
-                chargeTime: 0.72
+                name:'RUSHER',
+                color:0xff7a1a,
+                base:1,
+                end:1,
+                dash:4,
+                chargeFreq:8,
+                alertFreq:4,
+                moveEvery:1,
+                alertMoveEvery:1,
+                alertBonus:1,
+                lethalDist:1.5,
+                dashLethalDist:2.35
             }
         };
 
+        // Stage 1/2 keep assist on so新玩家能學會；Stage 3 才完全斷提示
         const LEVELS = [
             {
-                w: 15, h: 15,
-                alertHigh: 82, alertLow: 50,
-                mType: 'hunter',
-                envName: 'CALIBRATION SECTOR',
-                fog: 0x051115,
-                flash: 0x00ffff,
-                beatAssist: true,
-                loops: 0.11,
-                rooms: 2
+                w:17, h:17,
+                envName:'CALIBRATION SECTOR',
+                mType:'hunter',
+                fog:0x06141a,
+                flash:0x00ffff,
+                beatAssist:true,
+                rooms:2,
+                loops:12,
+                grace:3.5
             },
             {
-                w: 19, h: 19,
-                alertHigh: 74, alertLow: 42,
-                mType: 'stalker',
-                envName: 'LATENCY SECTOR',
-                fog: 0x110515,
-                flash: 0xaa00ff,
-                beatAssist: false,
-                loops: 0.14,
-                rooms: 3
+                w:21, h:21,
+                envName:'LATENCY SECTOR',
+                mType:'stalker',
+                fog:0x120616,
+                flash:0xbb66ff,
+                beatAssist:true,
+                rooms:3,
+                loops:18,
+                grace:3.0
             },
             {
-                w: 23, h: 23,
-                alertHigh: 66, alertLow: 34,
-                mType: 'rusher',
-                envName: 'COLLAPSE SECTOR',
-                fog: 0x220500,
-                flash: 0xff3300,
-                beatAssist: false,
-                loops: 0.18,
-                rooms: 4
+                w:25, h:25,
+                envName:'COLLAPSE SECTOR',
+                mType:'rusher',
+                fog:0x1d0704,
+                flash:0xff5b2e,
+                beatAssist:false,
+                rooms:4,
+                loops:26,
+                grace:2.5
             }
         ];
 
-        const stemFiles = ['0 Drums.mp3', '1 Bass.mp3', '2 Synth.mp3', '3 Other.mp3', 'EEEEERORR.mp3'];
-
+        // =========================
+        // 2) Runtime state
+        // =========================
         let currentStatus = STATE.MENU;
         let monsterStatus = AI_STATE.HUNT;
         let currentLevelIdx = 0;
         let activeMonsterDef = MONSTER_TYPES.hunter;
-        let gameStats = { alerts: 0 };
 
         let isPaused = false;
         let isTransitioning = false;
         let suppressUnlockPause = false;
 
+        let gameStats = {
+            totalTime:0,
+            alerts:0,
+            deaths:0
+        };
+
+        let countdown = 0; // no timeout now, kept unused intentionally
+        let notesCollected = 0;
+        let currentCollectedIds = new Set();
+
+        let nextBeatTime = 0;
+        let beatCount = 0;
+        let musicStartAbsTime = 0;
+
+        let graceTimer = 0;
+        let sonarRevealTimer = 0;
+        let beatBuffTimer = 0;
+        let lastPlayedBeatTime = -999;
+        let lastRewardedAssistBeatId = -999;
+        let screenShake = 0;
+        let msgTimer = null;
+        let aiTimer = 0;
+        let victoryTimer = 0;
+        let tutorialTimer = -1;
+
+        let beatAssistEnabled = false;
+        let playerNoise = 0;
+        let isAlertActive = false;
+
+        let mazeGrid = [];
+        let mazeW = 17;
+        let mazeH = 17;
+
+        let particles = [];
+        let walls = [];
+        let noteCubes = [];
+
+        // audio
         let audioCtx = null;
         let analyser = null;
         let dataArray = null;
@@ -350,215 +531,601 @@
         let threatGain = null;
         let threatPanner = null;
 
-        let musicStartAbsTime = 0;
-        let nextBeatTime = 0;
-        let beatCount = 0;
-        let lastPlayedBeatTime = 0;
-        let lastRewardedAssistBeatId = -99999;
-
-        let notesCollected = 0;
-        let graceTimer = 0;
-        let sonarRevealTimer = 0;
-        let beatBuffTimer = 0;
-        let aiTimer = 0;
-        let tutorialTimer = -1;
-        let victoryTimer = 0;
-        let screenShake = 0;
-        let playerNoise = 0;
-        let isAlertActive = false;
-        let dashContactTimer = 0;
-        let msgTimer = null;
-
-        let mazeGrid = [];
-        let mazeW = 15;
-        let mazeH = 15;
-        let particles = [];
-
+        // controls / temp vectors
         const keys = {};
         const clock = new THREE.Clock();
-
         const _oldPos = new THREE.Vector3();
         const _renderPos = new THREE.Vector3();
-        const _targetColor = new THREE.Color();
-        const _playerBox = new THREE.Box3();
-        const _wallBox = new THREE.Box3();
         const _forward = new THREE.Vector3();
         const _right = new THREE.Vector3();
-        const _toMonster = new THREE.Vector3();
+        const _up = new THREE.Vector3(0,1,0);
+        const _targetColor = new THREE.Color();
+        const _tmpVec = new THREE.Vector3();
 
+        // =========================
+        // 3) Scene
+        // =========================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x000000);
-        scene.fog = new THREE.FogExp2(0x000000, 0.12);
+        scene.fog = new THREE.FogExp2(0x000000, 0.095);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1200);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1400);
+        const renderer = new THREE.WebGLRenderer({ antialias:true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.body.appendChild(renderer.domElement);
 
         const controls = new PointerLockControls(camera, document.body);
 
-        const flashLight = new THREE.PointLight(0xff0000, 0, 28);
+        const ambient = new THREE.AmbientLight(0x101010, 1.2);
+        scene.add(ambient);
+
+        const flashLight = new THREE.PointLight(0xffffff, 0, 26);
         scene.add(flashLight);
-        scene.add(new THREE.AmbientLight(0x060606));
 
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(900, 900),
-            new THREE.MeshStandardMaterial({ color: 0x050505 })
+            new THREE.MeshStandardMaterial({
+                color:0x050505,
+                roughness:1
+            })
         );
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
-        const wallGeo = new THREE.BoxGeometry(GRID_SIZE, 6, GRID_SIZE);
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.92 });
-        const noteGeo = new THREE.OctahedronGeometry(0.8);
-        const partGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+        const wallGeo = new THREE.BoxGeometry(WALL_VISUAL_SIZE, 6, WALL_VISUAL_SIZE);
+        const wallMat = new THREE.MeshStandardMaterial({
+            color:0x111111,
+            roughness:0.92,
+            metalness:0.02
+        });
 
-        const walls = [];
-        const noteCubes = [];
+        const noteGeo = new THREE.OctahedronGeometry(0.9);
+        const partGeo = new THREE.BoxGeometry(0.12,0.12,0.12);
 
         const monster = new THREE.Mesh(
             new THREE.BoxGeometry(1.6, 4.2, 1.6),
-            new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0, wireframe: true })
+            new THREE.MeshBasicMaterial({
+                color:0xff3b30,
+                transparent:true,
+                opacity:0,
+                wireframe:true
+            })
         );
         monster.visible = false;
         scene.add(monster);
 
         const chargeRing = new THREE.Mesh(
-            new THREE.RingGeometry(2.5, 2.75, 32),
-            new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0 })
+            new THREE.RingGeometry(2.3, 2.6, 48),
+            new THREE.MeshBasicMaterial({
+                color:0xff3b30,
+                transparent:true,
+                opacity:0,
+                side:THREE.DoubleSide
+            })
         );
         chargeRing.rotation.x = -Math.PI / 2;
         chargeRing.visible = false;
         scene.add(chargeRing);
 
         const portal = new THREE.Mesh(
-            new THREE.TorusGeometry(2.15, 0.23, 16, 100),
-            new THREE.MeshBasicMaterial({ color: 0x00ffcc })
+            new THREE.TorusGeometry(2.1, 0.22, 16, 100),
+            new THREE.MeshBasicMaterial({
+                color:0x00ffcc
+            })
         );
         portal.visible = false;
         scene.add(portal);
 
-        const monsterMove = {
-            active: false,
-            t: 1,
-            dur: 0.22,
-            from: new THREE.Vector3(),
-            to: new THREE.Vector3()
-        };
+        const portalGlow = new THREE.PointLight(0x00ffcc, 0, 20);
+        portalGlow.visible = false;
+        scene.add(portalGlow);
 
-        function hideAllOverlays() {
-            document.getElementById('screen-menu').style.display = 'none';
-            document.getElementById('pause-overlay').style.display = 'none';
-            document.getElementById('transition-overlay').style.display = 'none';
-            document.getElementById('summary-overlay').style.display = 'none';
-            document.getElementById('death-reason').style.display = 'none';
+        // =========================
+        // 4) DOM refs
+        // =========================
+        const elMenu = document.getElementById('screen-menu');
+        const elPause = document.getElementById('pause-overlay');
+        const elTransition = document.getElementById('transition-overlay');
+        const elSummary = document.getElementById('summary-overlay');
+
+        const elTitle = document.getElementById('title-text');
+        const elLoadMsg = document.getElementById('load-msg');
+        const elBtnGroup = document.getElementById('btn-group');
+        const elDeathReason = document.getElementById('death-reason');
+
+        const elGameHUD = document.getElementById('game-hud');
+        const elStageIndicator = document.getElementById('stage-indicator');
+        const elEnvName = document.getElementById('env-name');
+        const elThreatClass = document.getElementById('threat-class');
+        const elAssistNote = document.getElementById('assist-note');
+        const elObjective = document.getElementById('objective-text');
+
+        const elStatusBox = document.getElementById('status-box');
+        const elStatusMain = document.getElementById('status-main');
+        const elStatusSub = document.getElementById('status-sub');
+
+        const elNoiseUI = document.getElementById('noise-ui');
+        const elNoiseText = document.getElementById('noise-text');
+        const elNoiseBar = document.getElementById('noise-bar');
+
+        const elMsg = document.getElementById('msg-box');
+        const elEdgeWarning = document.getElementById('edge-warning');
+        const elCrosshair = document.getElementById('crosshair');
+
+        const elS1 = document.getElementById('s1');
+        const elS2 = document.getElementById('s2');
+        const elS3 = document.getElementById('s3');
+
+        const elTransTitle = document.getElementById('trans-title');
+        const elTransStats = document.getElementById('trans-stats');
+        const elFinalStats = document.getElementById('final-stats');
+
+        // =========================
+        // 5) Utility
+        // =========================
+        function clamp(v, min, max){
+            return Math.max(min, Math.min(max, v));
         }
 
-        function clearTransientUI() {
-            const msg = document.getElementById('msg-box');
-            msg.style.display = 'none';
-            msg.innerText = '';
-            if (msgTimer) {
-                clearTimeout(msgTimer);
-                msgTimer = null;
-            }
+        function lerp(a,b,t){
+            return a + (b-a) * t;
         }
 
-        function showMsg(txt, dur = 2200) {
-            const el = document.getElementById('msg-box');
-            el.innerText = txt;
-            el.style.display = 'block';
+        function showMsg(txt, dur = 1800){
+            elMsg.textContent = txt;
+            elMsg.style.display = 'block';
             if (msgTimer) clearTimeout(msgTimer);
             msgTimer = setTimeout(() => {
-                if (el.innerText === txt) el.style.display = 'none';
+                if (elMsg.textContent === txt) elMsg.style.display = 'none';
                 msgTimer = null;
             }, dur);
         }
 
-        function setPaused(v) {
-            isPaused = v;
-            document.getElementById('pause-overlay').style.display = v ? 'flex' : 'none';
+        function clearTransientUI(){
+            if (msgTimer) clearTimeout(msgTimer);
+            msgTimer = null;
+            elMsg.style.display = 'none';
+            elMsg.textContent = '';
+            elDeathReason.style.display = 'none';
+            elDeathReason.textContent = '';
         }
 
-        function programmaticUnlock() {
+        function hideAllOverlays(){
+            elMenu.style.display = 'none';
+            elPause.style.display = 'none';
+            elTransition.style.display = 'none';
+            elSummary.style.display = 'none';
+        }
+
+        function resetMenuScene(){
+            clearMaze();
+            portal.visible = false;
+            portalGlow.visible = false;
+            monster.visible = false;
+            chargeRing.visible = false;
+            scene.fog.color.setHex(0x000000);
+            scene.background.copy(scene.fog.color);
+            flashLight.color.setHex(0xffffff);
+            flashLight.intensity = 0;
+            elEdgeWarning.style.opacity = '0';
+            elCrosshair.style.display = 'none';
+        }
+
+        function setPaused(p){
+            isPaused = p;
+            elPause.style.display = p ? 'flex' : 'none';
+        }
+
+        function programmaticUnlock(){
             if (!controls.isLocked) return;
             suppressUnlockPause = true;
             controls.unlock();
         }
 
-        function cellToWorld(x, z, y = 0) {
-            return new THREE.Vector3(
-                x * GRID_SIZE - (mazeW * 3),
-                y,
-                z * GRID_SIZE - (mazeH * 3)
-            );
+        function isAudioReady(){
+            return audioCtx && stems.length === stemFiles.length;
         }
 
-        function worldToCell(pos) {
+        function worldX(cellX){
+            return cellX * GRID_SIZE - (mazeW * 3);
+        }
+
+        function worldZ(cellZ){
+            return cellZ * GRID_SIZE - (mazeH * 3);
+        }
+
+        function worldToCell(pos){
             return {
-                x: Math.max(0, Math.min(mazeW - 1, Math.floor((pos.x + mazeW * 3 + GRID_SIZE * 0.5) / GRID_SIZE))),
-                z: Math.max(0, Math.min(mazeH - 1, Math.floor((pos.z + mazeH * 3 + GRID_SIZE * 0.5) / GRID_SIZE)))
+                x: clamp(Math.floor((pos.x + mazeW * 3 + GRID_SIZE * 0.5) / GRID_SIZE), 0, mazeW - 1),
+                z: clamp(Math.floor((pos.z + mazeH * 3 + GRID_SIZE * 0.5) / GRID_SIZE), 0, mazeH - 1)
             };
         }
 
-        function seededRandom(s) {
-            return function () {
-                let t = s += 0x6D2B79F5;
-                t = Math.imul(t ^ t >>> 15, t | 1);
-                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        function seededRandom(seed){
+            return function(){
+                let t = seed += 0x6D2B79F5;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
             };
         }
 
-        function getDistanceMap(grid, startX, startZ) {
-            const map = Array(grid.length).fill(null).map(() => Array(grid[0].length).fill(-1));
-            const q = [[startX, startZ, 0]];
+        function shuffle(arr, rnd = Math.random){
+            for(let i = arr.length - 1; i > 0; i--){
+                const j = Math.floor(rnd() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function getDistanceMap(grid, startX, startZ){
+            const map = Array.from({ length:grid.length }, () =>
+                Array(grid[0].length).fill(-1)
+            );
+            const queue = [[startX, startZ, 0]];
             map[startZ][startX] = 0;
-            while (q.length) {
-                const [cx, cz, d] = q.shift();
-                [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dz]) => {
+
+            while(queue.length){
+                const [cx, cz, d] = queue.shift();
+                for(const [dx, dz] of [[0,1],[0,-1],[1,0],[-1,0]]){
                     const nx = cx + dx;
                     const nz = cz + dz;
-                    if (
+                    if(
                         nz >= 0 && nz < grid.length &&
                         nx >= 0 && nx < grid[0].length &&
                         grid[nz][nx] === 0 &&
                         map[nz][nx] === -1
-                    ) {
+                    ){
                         map[nz][nx] = d + 1;
-                        q.push([nx, nz, d + 1]);
+                        queue.push([nx, nz, d + 1]);
                     }
-                });
+                }
             }
             return map;
         }
 
-        function getNearestAssistBeat(currentTime) {
-            if (!audioCtx || musicStartAbsTime === 0) return { id: -999, time: -999 };
+        function getOpenReachableCells(){
+            const distMap = getDistanceMap(mazeGrid, 1, 1);
+            const cells = [];
+            for(let z=0; z<mazeH; z++){
+                for(let x=0; x<mazeW; x++){
+                    if(mazeGrid[z][x] === 0 && distMap[z][x] >= 0 && !(x === 1 && z === 1)){
+                        cells.push({ x, z, d: distMap[z][x] });
+                    }
+                }
+            }
+            cells.sort((a,b) => a.d - b.d);
+            return cells;
+        }
+
+        // =========================
+        // 6) Maze generation
+        // =========================
+        function carveRoom(grid, x, z, w, h){
+            for(let rz = z; rz < z + h; rz++){
+                for(let rx = x; rx < x + w; rx++){
+                    if(
+                        rz > 0 && rz < grid.length - 1 &&
+                        rx > 0 && rx < grid[0].length - 1
+                    ){
+                        grid[rz][rx] = 0;
+                    }
+                }
+            }
+        }
+
+        function generateMaze(w, h, rnd, roomCount = 2, loopCount = 10){
+            if (w % 2 === 0) w += 1;
+            if (h % 2 === 0) h += 1;
+
+            const grid = Array.from({ length:h }, () => Array(w).fill(1));
+
+            function carveDFS(x, y){
+                grid[y][x] = 0;
+                const dirs = shuffle([[0,2],[0,-2],[2,0],[-2,0]], rnd);
+                for(const [dx, dy] of dirs){
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if(nx > 0 && nx < w - 1 && ny > 0 && ny < h - 1 && grid[ny][nx] === 1){
+                        grid[y + dy / 2][x + dx / 2] = 0;
+                        carveDFS(nx, ny);
+                    }
+                }
+            }
+
+            carveDFS(1, 1);
+
+            // carve rooms
+            for(let i=0; i<roomCount; i++){
+                const rw = rnd() < 0.5 ? 3 : 5;
+                const rh = rnd() < 0.5 ? 3 : 5;
+                const rx = 1 + Math.floor(rnd() * ((w - rw - 2) / 2)) * 2;
+                const rz = 1 + Math.floor(rnd() * ((h - rh - 2) / 2)) * 2;
+                carveRoom(grid, rx, rz, rw, rh);
+            }
+
+            // carve loops
+            let tries = loopCount * 8;
+            while(loopCount > 0 && tries-- > 0){
+                const x = 1 + Math.floor(rnd() * (w - 2));
+                const z = 1 + Math.floor(rnd() * (h - 2));
+                if(grid[z][x] !== 1) continue;
+
+                const horiz = x > 0 && x < w - 1 && grid[z][x - 1] === 0 && grid[z][x + 1] === 0;
+                const vert  = z > 0 && z < h - 1 && grid[z - 1][x] === 0 && grid[z + 1][x] === 0;
+
+                if(horiz || vert){
+                    grid[z][x] = 0;
+                    loopCount--;
+                }
+            }
+
+            // ensure spawn pocket
+            grid[1][1] = 0;
+            grid[1][2] = 0;
+            grid[2][1] = 0;
+
+            return grid;
+        }
+
+        function buildMazeMeshes(){
+            clearMaze();
+            for(let z=0; z<mazeH; z++){
+                for(let x=0; x<mazeW; x++){
+                    if(mazeGrid[z][x] === 1){
+                        const wall = new THREE.Mesh(wallGeo, wallMat);
+                        wall.position.set(worldX(x), 3, worldZ(z));
+                        scene.add(wall);
+                        walls.push(wall);
+                    }
+                }
+            }
+        }
+
+        function clearMaze(){
+            for(const w of walls) scene.remove(w);
+            for(const n of noteCubes){
+                if (n.material) n.material.dispose();
+                scene.remove(n);
+            }
+            walls.length = 0;
+            noteCubes.length = 0;
+        }
+
+        // =========================
+        // 7) Collision / movement
+        // =========================
+        function collidesAt(px, pz){
+            const centerCell = worldToCell({ x:px, z:pz });
+            for(let z = centerCell.z - 2; z <= centerCell.z + 2; z++){
+                for(let x = centerCell.x - 2; x <= centerCell.x + 2; x++){
+                    if(z < 0 || z >= mazeH || x < 0 || x >= mazeW) continue;
+                    if(mazeGrid[z][x] !== 1) continue;
+
+                    const wx = worldX(x);
+                    const wz = worldZ(z);
+
+                    const dx = Math.abs(px - wx);
+                    const dz = Math.abs(pz - wz);
+
+                    if(dx < WALL_COLLIDER_HALF + PLAYER_RADIUS && dz < WALL_COLLIDER_HALF + PLAYER_RADIUS){
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function movePlayer(dt){
+            _forward.set(0,0,0);
+            camera.getWorldDirection(_forward);
+            _forward.y = 0;
+            _forward.normalize();
+
+            _right.crossVectors(_up, _forward).normalize();
+
+            let inputX = 0;
+            let inputZ = 0;
+            if(keys['w']) inputZ += 1;
+            if(keys['s']) inputZ -= 1;
+            if(keys['d']) inputX += 1;
+            if(keys['a']) inputX -= 1;
+
+            const isTryingToMove = inputX !== 0 || inputZ !== 0;
+
+            const now = audioCtx ? audioCtx.currentTime : 0;
+            const nearestAssist = getNearestAssistBeat(now);
+            const timeToNearest = Math.abs(now - nearestAssist.time);
+            const inBeatWindow = beatAssistEnabled && isTryingToMove && timeToNearest <= ON_BEAT_WINDOW;
+
+            if(inBeatWindow){
+                if(nearestAssist.id !== lastRewardedAssistBeatId){
+                    beatBuffTimer = ON_BEAT_BUFF_TIME;
+                    lastRewardedAssistBeatId = nearestAssist.id;
+                }
+            }
+
+            let baseSpeed = keys['shift'] ? 9.8 : 6.0;
+            let finalSpeed = baseSpeed * (beatBuffTimer > 0 ? ON_BEAT_SPEED_MULT : 1.0);
+
+            const move = new THREE.Vector3();
+            if(inputZ !== 0) move.addScaledVector(_forward, inputZ);
+            if(inputX !== 0) move.addScaledVector(_right, inputX);
+
+            if(move.lengthSq() > 0){
+                move.normalize().multiplyScalar(finalSpeed * dt);
+
+                // axis-separated sliding to avoid corner sticking
+                const nextX = camera.position.x + move.x;
+                if(!collidesAt(nextX, camera.position.z)){
+                    camera.position.x = nextX;
+                }
+
+                const nextZ = camera.position.z + move.z;
+                if(!collidesAt(camera.position.x, nextZ)){
+                    camera.position.z = nextZ;
+                }
+            }
+
+            return { isTryingToMove, inBeatWindow };
+        }
+
+        // =========================
+        // 8) Audio
+        // =========================
+        async function loadAudio(){
+            if(isAudioReady()) return true;
+            if(audioLoadPromise) return audioLoadPromise;
+
+            audioLoadPromise = (async () => {
+                try{
+                    elLoadMsg.textContent = '同步音訊緩衝區…';
+                    elLoadMsg.style.display = 'block';
+
+                    if(!audioCtx){
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+
+                    stems = [];
+
+                    for(let i=0; i<stemFiles.length; i++){
+                        const file = stemFiles[i];
+                        const res = await fetch(file);
+                        if(!res.ok) throw new Error(`Fetch Failed: ${file}`);
+                        const arr = await res.arrayBuffer();
+                        const buffer = await audioCtx.decodeAudioData(arr);
+
+                        const gain = audioCtx.createGain();
+
+                        let panner = null;
+                        if(i === 4){
+                            if(audioCtx.createStereoPanner){
+                                panner = audioCtx.createStereoPanner();
+                                panner.connect(gain);
+                                gain.connect(audioCtx.destination);
+                            }else{
+                                panner = null;
+                                gain.connect(audioCtx.destination);
+                            }
+                        }else{
+                            gain.connect(audioCtx.destination);
+                        }
+
+                        stems.push({
+                            buffer,
+                            gain,
+                            panner,
+                            source:null
+                        });
+                    }
+
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 64;
+                    stems[0].gain.connect(analyser);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                    elLoadMsg.style.display = 'none';
+                    elBtnGroup.style.display = 'block';
+                    return true;
+                }catch(err){
+                    elLoadMsg.textContent = `載入失敗: ${err.message}`;
+                    elLoadMsg.style.display = 'block';
+                    elBtnGroup.style.display = 'block';
+
+                    stems.forEach(s => {
+                        try{ s.gain.disconnect(); }catch(e){}
+                        try{ s.panner?.disconnect(); }catch(e){}
+                    });
+                    stems = [];
+                    analyser = null;
+                    dataArray = null;
+
+                    if(audioCtx){
+                        try{ await audioCtx.close(); }catch(e){}
+                        audioCtx = null;
+                    }
+                    return false;
+                }finally{
+                    audioLoadPromise = null;
+                }
+            })();
+
+            return audioLoadPromise;
+        }
+
+        function stopMusic(){
+            if(!audioCtx) return;
+            for(const s of stems){
+                if(s.source){
+                    try{ s.source.stop(); }catch(e){}
+                    try{ s.source.disconnect(); }catch(e){}
+                    s.source = null;
+                }
+                if(s.gain) s.gain.gain.value = 0;
+            }
+        }
+
+        async function startMusic(){
+            if(!isAudioReady()) return null;
+            if(audioCtx.state === 'suspended') await audioCtx.resume();
+
+            const startAt = audioCtx.currentTime + 0.18;
+            for(let i=0; i<stems.length; i++){
+                const s = stems[i];
+                const src = audioCtx.createBufferSource();
+                src.buffer = s.buffer;
+                src.loop = true;
+
+                if(i === 4){
+                    if(s.panner){
+                        src.connect(s.panner);
+                    }else{
+                        src.connect(s.gain);
+                    }
+                    s.gain.gain.value = 0;
+                    threatGain = s.gain;
+                    threatPanner = s.panner;
+                }else{
+                    src.connect(s.gain);
+                    s.gain.gain.value = 0;
+                }
+
+                src.start(startAt);
+                s.source = src;
+            }
+            return startAt;
+        }
+
+        function getNearestAssistBeat(currentTime){
+            if(!audioCtx || musicStartAbsTime === 0){
+                return { id:-999, time:-999 };
+            }
             const elapsed = currentTime - (musicStartAbsTime + BEAT_OFFSET);
             const currentBeatFloat = elapsed / BEAT_INT;
             const assistId =
                 Math.round((currentBeatFloat + ASSIST_PHASE) / ASSIST_EVERY_N_BEATS) * ASSIST_EVERY_N_BEATS
                 - ASSIST_PHASE;
             const assistTime = (musicStartAbsTime + BEAT_OFFSET) + assistId * BEAT_INT;
-            return { id: assistId, time: assistTime };
+            return { id:assistId, time:assistTime };
         }
 
-        function playBeatClick(time, enabled) {
-            if (!enabled || !audioCtx) return;
-            if (time <= lastPlayedBeatTime) return;
+        function playBeatClick(time){
+            if(!beatAssistEnabled || !audioCtx) return;
+            if(time <= lastPlayedBeatTime) return;
+            if(time < audioCtx.currentTime - 0.1) return;
+
             lastPlayedBeatTime = time;
-            if (time < audioCtx.currentTime - 0.1) return;
 
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
 
             osc.type = 'triangle';
-            osc.frequency.value = 880;
+            osc.frequency.value = 860;
 
-            gainNode.gain.setValueAtTime(0, time);
-            gainNode.gain.linearRampToValueAtTime(0.12, time + 0.005);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+            gainNode.gain.setValueAtTime(0.0001, time);
+            gainNode.gain.linearRampToValueAtTime(0.08, time + 0.004);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
 
             osc.connect(gainNode);
             gainNode.connect(audioCtx.destination);
@@ -567,122 +1134,134 @@
             osc.stop(time + 0.06);
         }
 
-        function generateBraidedMaze(w, h, rnd, loopChance = 0.12, roomCount = 2) {
-            const g = Array(h).fill(null).map(() => Array(w).fill(1));
+        function updateStemMix(now){
+            if(!audioCtx || stems.length < 5) return;
 
-            function carve(x, y) {
-                g[y][x] = 0;
-                const dirs = [[0,2],[0,-2],[2,0],[-2,0]].sort(() => rnd() - 0.5);
-                for (const [dx, dy] of dirs) {
-                    const nx = x + dx;
-                    const ny = y + dy;
-                    if (nx > 0 && nx < w - 1 && ny > 0 && ny < h - 1 && g[ny][nx] === 1) {
-                        g[y + dy / 2][x + dx / 2] = 0;
-                        carve(nx, ny);
+            const dangerDist = clamp(1 - (camera.position.distanceTo(monster.position) - 4) / 14, 0, 1);
+            const dangerState =
+                monsterStatus === AI_STATE.CHARGE ? 0.9 :
+                monsterStatus === AI_STATE.DASH ? 1.0 :
+                isAlertActive ? 0.65 : 0.0;
+
+            const danger = clamp(Math.max(dangerDist, dangerState), 0, 1);
+
+            // duck BGM when danger rises
+            const duck = lerp(1.0, 0.55, danger);
+
+            // DRUMS stay present, others quieter so threat info can breathe
+            stems[0].gain.gain.setTargetAtTime(0.48 * duck, now, 0.08);
+            stems[1].gain.gain.setTargetAtTime(currentCollectedIds.has(1) ? 0.22 * duck : 0.0, now, 0.12);
+            stems[2].gain.gain.setTargetAtTime(currentCollectedIds.has(2) ? 0.20 * duck : 0.0, now, 0.12);
+            stems[3].gain.gain.setTargetAtTime(currentCollectedIds.has(3) ? 0.18 * duck : 0.0, now, 0.12);
+
+            if(threatGain){
+                const dist = camera.position.distanceTo(monster.position);
+                let targetThreatGain = 0;
+
+                if(graceTimer <= 0){
+                    const distFactor = clamp((18 - dist) / 14, 0, 1);
+                    let stateBoost = 1.0;
+                    if(monsterStatus === AI_STATE.CHARGE) stateBoost = 1.38;
+                    else if(monsterStatus === AI_STATE.DASH) stateBoost = 1.62;
+                    if(isAlertActive) stateBoost *= 1.18;
+                    targetThreatGain = clamp(distFactor * 0.72 * stateBoost, 0, 0.95);
+                }
+
+                threatGain.gain.setTargetAtTime(targetThreatGain, now, 0.18);
+
+                if(threatPanner){
+                    _tmpVec.copy(monster.position).sub(camera.position);
+                    _tmpVec.y = 0;
+                    if(_tmpVec.lengthSq() > 0.0001){
+                        _tmpVec.normalize();
+                        camera.getWorldDirection(_forward);
+                        _forward.y = 0;
+                        _forward.normalize();
+                        _right.crossVectors(_up, _forward).normalize();
+
+                        const pan = clamp(_right.dot(_tmpVec), -1, 1);
+                        threatPanner.pan.setTargetAtTime(pan * 0.9, now, 0.12);
                     }
                 }
             }
-
-            carve(1, 1);
-
-            for (let i = 0; i < roomCount; i++) {
-                const cx = 1 + Math.floor(rnd() * ((w - 3) / 2)) * 2;
-                const cz = 1 + Math.floor(rnd() * ((h - 3) / 2)) * 2;
-                for (let dz = -1; dz <= 1; dz++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        const rx = cx + dx;
-                        const rz = cz + dz;
-                        if (rx > 0 && rx < w - 1 && rz > 0 && rz < h - 1) g[rz][rx] = 0;
-                    }
-                }
-                if (cx + 2 < w - 1) g[cz][cx + 2] = 0;
-                if (cz + 2 < h - 1) g[cz + 2][cx] = 0;
-            }
-
-            for (let z = 1; z < h - 1; z++) {
-                for (let x = 1; x < w - 1; x++) {
-                    if (g[z][x] !== 1) continue;
-                    const horiz = g[z][x - 1] === 0 && g[z][x + 1] === 0 && g[z - 1][x] === 1 && g[z + 1][x] === 1;
-                    const vert  = g[z - 1][x] === 0 && g[z + 1][x] === 0 && g[z][x - 1] === 1 && g[z][x + 1] === 1;
-                    if ((horiz || vert) && rnd() < loopChance) g[z][x] = 0;
-                }
-            }
-
-            for (let z = 1; z < h - 1; z++) {
-                for (let x = 1; x < w - 1; x++) {
-                    if (g[z][x] !== 0) continue;
-                    let wallsAround = 0;
-                    const closed = [];
-                    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dz]) => {
-                        if (g[z + dz][x + dx] === 1) {
-                            wallsAround++;
-                            closed.push([dx, dz]);
-                        }
-                    });
-                    if (wallsAround >= 3 && closed.length && rnd() < 0.30) {
-                        const [dx, dz] = closed[Math.floor(rnd() * closed.length)];
-                        g[z + dz][x + dx] = 0;
-                    }
-                }
-            }
-
-            return g;
         }
 
-        function clearMaze() {
-            walls.forEach(w => scene.remove(w));
-            noteCubes.forEach(n => {
-                n.material.dispose();
-                scene.remove(n);
-            });
-            walls.length = 0;
-            noteCubes.length = 0;
-        }
-
-        function spawnParticleBurst(pos, color, count = 25) {
-            for (let i = 0; i < count; i++) {
-                const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
-                const p = new THREE.Mesh(partGeo, mat);
-                p.position.copy(pos);
-                const vel = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.3,
-                    Math.random() * 0.3,
-                    (Math.random() - 0.5) * 0.3
-                );
-                particles.push({ mesh: p, vel, life: 1.0 });
-                scene.add(p);
-            }
-        }
-
-        function spawnRipple(pos) {
-            const rippleGeo = new THREE.RingGeometry(0.1, 0.2, 32);
-            const r = new THREE.Mesh(
-                rippleGeo,
-                new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 1, side: THREE.DoubleSide })
+        // =========================
+        // 9) Gameplay entities
+        // =========================
+        function spawnNote(id, x, z){
+            const m = new THREE.Mesh(
+                noteGeo,
+                new THREE.MeshBasicMaterial({ color: STEM_COLORS[id] || 0xffffff })
             );
-            r.position.copy(pos);
-            r.position.y = 0.05;
-            r.rotation.x = -Math.PI / 2;
-            scene.add(r);
-            particles.push({ mesh: r, life: 1.0, isRipple: true });
+            m.position.set(x, 1.65, z);
+            m.userData = { id, baseY:1.65 };
+            scene.add(m);
+            noteCubes.push(m);
         }
 
-        function updateParticles(dt) {
-            for (let i = particles.length - 1; i >= 0; i--) {
+        function spawnParticleBurst(pos, color, count = 24){
+            for(let i=0; i<count; i++){
+                const mat = new THREE.MeshBasicMaterial({
+                    color,
+                    transparent:true,
+                    opacity:1
+                });
+                const mesh = new THREE.Mesh(partGeo, mat);
+                mesh.position.copy(pos);
+                particles.push({
+                    mesh,
+                    vel:new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.28,
+                        Math.random() * 0.28,
+                        (Math.random() - 0.5) * 0.28
+                    ),
+                    life:1.0,
+                    isRipple:false
+                });
+                scene.add(mesh);
+            }
+        }
+
+        function spawnRipple(pos){
+            const geo = new THREE.RingGeometry(0.15, 0.22, 32);
+            const mat = new THREE.MeshBasicMaterial({
+                color:0x00ffcc,
+                transparent:true,
+                opacity:1,
+                side:THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+            mesh.position.y = 0.08;
+            mesh.rotation.x = -Math.PI / 2;
+
+            particles.push({
+                mesh,
+                vel:null,
+                life:1.0,
+                isRipple:true
+            });
+            scene.add(mesh);
+        }
+
+        function updateParticles(dt){
+            for(let i = particles.length - 1; i >= 0; i--){
                 const p = particles[i];
-                if (p.isRipple) {
-                    p.life -= dt * 0.8;
-                    p.mesh.scale.addScalar(dt * 30);
+                if(p.isRipple){
+                    p.life -= dt * 0.75;
+                    p.mesh.scale.addScalar(dt * 22);
                     p.mesh.material.opacity = p.life;
-                } else {
+                }else{
                     p.mesh.position.add(p.vel);
-                    p.vel.y -= 0.4 * dt;
-                    p.life -= dt * 1.2;
+                    p.vel.y -= 0.42 * dt;
+                    p.life -= dt * 1.25;
                     p.mesh.material.opacity = p.life;
-                    p.mesh.scale.setScalar(p.life);
+                    p.mesh.scale.setScalar(Math.max(p.life, 0.05));
                 }
-                if (p.life <= 0) {
-                    if (p.isRipple) p.mesh.geometry.dispose();
+
+                if(p.life <= 0){
+                    if(p.isRipple) p.mesh.geometry.dispose();
                     p.mesh.material.dispose();
                     scene.remove(p.mesh);
                     particles.splice(i, 1);
@@ -690,348 +1269,178 @@
             }
         }
 
-        function queueMonsterMove(cellX, cellZ, duration) {
-            monsterMove.active = true;
-            monsterMove.t = 0;
-            monsterMove.dur = duration;
-            monsterMove.from.copy(monster.position);
-            const target = cellToWorld(cellX, cellZ, 2.1);
-            monsterMove.to.copy(target);
-        }
-
-        function updateMonsterMotion(dt) {
-            if (!monsterMove.active) return;
-            monsterMove.t += dt;
-            const t = Math.min(1, monsterMove.t / monsterMove.dur);
-            monster.position.lerpVectors(monsterMove.from, monsterMove.to, t);
-            if (t >= 1) {
-                monsterMove.active = false;
-                if (monsterStatus === AI_STATE.DASH) {
-                    monsterStatus = AI_STATE.RECOVER;
-                    dashContactTimer = 0.22;
-                }
+        function updateObjectiveUI(){
+            if(notesCollected < 3){
+                elObjective.textContent = `COLLECT ${3 - notesCollected} MORE`;
+                elStatusMain.textContent = `FRAGMENTS ${notesCollected} / 3`;
+                elStatusSub.textContent = beatAssistEnabled
+                    ? '青色 [ON BEAT] = 更快 + 更安靜，不是無敵。'
+                    : '這一層沒有節拍提示，請靠聲音和地形活下來。';
+            }else{
+                elObjective.textContent = `PORTAL OPEN — FIND CYAN GATE`;
+                elStatusMain.textContent = `EXIT READY`;
+                elStatusSub.textContent = '看見青色門光就直接撤離。';
             }
         }
 
-        function spawnNote(id, x, z) {
-            const m = new THREE.Mesh(
-                noteGeo,
-                new THREE.MeshBasicMaterial({ color: STEM_COLORS[id] })
-            );
-            m.position.set(x, 1.5, z);
-            m.userData = { id, baseY: 1.5 };
-            scene.add(m);
-            noteCubes.push(m);
-        }
-
-        function stopMusic() {
-            if (!audioCtx) return;
-            stems.forEach(s => {
-                if (s.source) {
-                    try { s.source.stop(); } catch {}
-                    try { s.source.disconnect(); } catch {}
-                    s.source = null;
-                }
-                if (s.gain) s.gain.gain.value = 0;
-            });
-        }
-
-        function isAudioReady() {
-            return audioCtx && stems.length === stemFiles.length;
-        }
-
-        async function loadAudio() {
-            if (isAudioReady()) return true;
-            if (audioLoadPromise) return audioLoadPromise;
-
-            audioLoadPromise = (async () => {
-                try {
-                    const loadMsg = document.getElementById('load-msg');
-                    loadMsg.innerText = "同步音訊緩衝區...";
-                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-                    stems = [];
-
-                    for (let i = 0; i < stemFiles.length; i++) {
-                        const f = stemFiles[i];
-                        const res = await fetch(f);
-                        if (!res.ok) throw new Error(`Fetch Failed: ${f}`);
-                        const buffer = await audioCtx.decodeAudioData(await res.arrayBuffer());
-
-                        const gain = audioCtx.createGain();
-
-                        if (i === 4) {
-                            threatGain = gain;
-                            threatPanner = audioCtx.createStereoPanner();
-                            gain.connect(threatPanner);
-                            threatPanner.connect(audioCtx.destination);
-                        } else {
-                            gain.connect(audioCtx.destination);
-                        }
-
-                        stems.push({ buffer, gain, source: null });
-                    }
-
-                    analyser = audioCtx.createAnalyser();
-                    analyser.fftSize = 64;
-                    stems[0].gain.connect(analyser);
-                    dataArray = new Uint8Array(32);
-
-                    loadMsg.style.display = 'none';
-                    document.getElementById('btn-group').style.display = 'block';
-                    return true;
-                } catch (err) {
-                    document.getElementById('load-msg').innerText = `載入失敗: ${err.message}`;
-                    document.getElementById('load-msg').style.display = 'block';
-                    document.getElementById('btn-group').style.display = 'block';
-
-                    stems.forEach(s => {
-                        try { s.gain.disconnect(); } catch {}
-                    });
-                    stems = [];
-                    analyser = null;
-                    dataArray = null;
-
-                    if (audioCtx) {
-                        try { await audioCtx.close(); } catch {}
-                        audioCtx = null;
-                    }
-                    return false;
-                } finally {
-                    audioLoadPromise = null;
-                }
-            })();
-
-            return audioLoadPromise;
-        }
-
-        async function startMusic() {
-            if (!isAudioReady()) return null;
-            if (audioCtx.state === 'suspended') await audioCtx.resume();
-
-            const startAt = audioCtx.currentTime + 0.2;
-            stems.forEach((s, i) => {
-                s.source = audioCtx.createBufferSource();
-                s.source.buffer = s.buffer;
-                s.source.loop = true;
-                s.source.connect(s.gain);
-
-                if (i === 0) {
-                    s.gain.gain.value = 1;
-                } else if (i === 4) {
-                    s.gain.gain.value = 0;
-                } else {
-                    s.gain.gain.value = 0;
-                }
-
-                s.source.start(startAt);
-            });
-            return startAt;
-        }
-
-        function updateThreatAudio(distToMonster) {
-            if (!audioCtx || !threatGain || !threatPanner || currentStatus !== STATE.GAME || !monster.visible) return;
-
-            let targetGain = 0;
-            if (graceTimer <= 0) {
-                const hearStart = 24;
-                const hearFull = 5;
-                const distFactor = Math.max(0, Math.min(1, (hearStart - distToMonster) / (hearStart - hearFull)));
-
-                let stateFactor = 1.0;
-                if (monsterStatus === AI_STATE.CHARGE) stateFactor = 1.35;
-                else if (monsterStatus === AI_STATE.DASH) stateFactor = 1.65;
-                if (isAlertActive) stateFactor *= 1.2;
-
-                targetGain = Math.min(1.0, distFactor * stateFactor * 0.95);
-            }
-
-            camera.getWorldDirection(_forward);
-            _forward.y = 0;
-            _forward.normalize();
-
-            _right.crossVectors(_forward, new THREE.Vector3(0, 1, 0)).normalize();
-            _toMonster.copy(monster.position).sub(camera.position);
-            _toMonster.y = 0;
-
-            if (_toMonster.lengthSq() > 0.0001) _toMonster.normalize();
-            const pan = THREE.MathUtils.clamp(_right.dot(_toMonster), -1, 1);
-
-            threatGain.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.10);
-            threatPanner.pan.setTargetAtTime(pan, audioCtx.currentTime, 0.08);
-        }
-
-        function resetSession(fullReset = false) {
+        function resetSession(fullReset = false){
             clearTransientUI();
 
             notesCollected = 0;
+            currentCollectedIds.clear();
+
             beatCount = 0;
             nextBeatTime = 0;
-            graceTimer = 4.0;
-            sonarRevealTimer = 0;
+            musicStartAbsTime = 0;
             beatBuffTimer = 0;
-            aiTimer = 0;
-            tutorialTimer = -1;
+            lastPlayedBeatTime = -999;
+            lastRewardedAssistBeatId = -999;
+
             victoryTimer = 0;
+            tutorialTimer = -1;
+            aiTimer = 0;
             screenShake = 0;
+
             playerNoise = 0;
             isAlertActive = false;
-            dashContactTimer = 0;
-            lastPlayedBeatTime = 0;
-            lastRewardedAssistBeatId = -99999;
-
             monsterStatus = AI_STATE.HUNT;
-            monsterMove.active = false;
 
-            if (fullReset) {
+            if(fullReset){
                 currentLevelIdx = 0;
-                gameStats = { alerts: 0 };
+                gameStats = { totalTime:0, alerts:0, deaths:0 };
             }
 
-            for (const k in keys) keys[k] = false;
+            for(const k in keys) keys[k] = false;
 
-            document.getElementById('noise-ui').style.display = 'none';
-            document.getElementById('stage-indicator').style.display = 'none';
-            document.getElementById('s1').style.color =
-            document.getElementById('s2').style.color =
-            document.getElementById('s3').style.color = '#333';
+            elNoiseUI.style.display = 'none';
+            elGameHUD.style.display = 'none';
+            elStageIndicator.style.display = 'none';
+            elStatusBox.style.display = 'none';
+            elCrosshair.style.display = 'none';
+            elEdgeWarning.style.opacity = '0';
 
-            const death = document.getElementById('death-reason');
-            death.style.display = 'none';
-            death.innerText = '';
+            elNoiseBar.style.width = '0%';
+            elNoiseBar.style.background = '#fff';
+            elNoiseText.textContent = '[ NOISE LEVEL ]';
+            elNoiseText.style.color = '#aaa';
+
+            elS1.style.color = '#333';
+            elS2.style.color = '#333';
+            elS3.style.color = '#333';
 
             monster.visible = false;
             monster.material.opacity = 0;
             monster.material.wireframe = true;
             portal.visible = false;
+            portalGlow.visible = false;
             chargeRing.visible = false;
 
-            if (threatGain && audioCtx) {
-                threatGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                threatGain.gain.setValueAtTime(0, audioCtx.currentTime);
-            }
-
             particles.forEach(p => {
-                if (p.isRipple) p.mesh.geometry.dispose();
+                if(p.isRipple) p.mesh.geometry.dispose();
                 p.mesh.material.dispose();
                 scene.remove(p.mesh);
             });
             particles = [];
+
+            updateObjectiveUI();
         }
 
-        function chooseOpenCellsForLevel() {
-            const distMap = getDistanceMap(mazeGrid, 1, 1);
-            const openCells = [];
-            mazeGrid.forEach((row, z) => row.forEach((cell, x) => {
-                if (cell === 0 && !(x === 1 && z === 1) && distMap[z][x] > 0) {
-                    openCells.push({ x, z, d: distMap[z][x] });
-                }
-            }));
-            openCells.sort((a, b) => a.d - b.d);
-            return openCells;
-        }
-
-        function buildMazeFromGrid() {
-            clearMaze();
-            mazeGrid.forEach((row, z) => row.forEach((cell, x) => {
-                if (cell === 1) {
-                    const w = new THREE.Mesh(wallGeo, wallMat);
-                    w.position.set(x * GRID_SIZE - (mazeW * 3), 3, z * GRID_SIZE - (mazeH * 3));
-                    scene.add(w);
-                    walls.push(w);
-                }
-            }));
-        }
-
-        function handleLevelClear() {
+        // =========================
+        // 10) State flow
+        // =========================
+        function handleLevelClear(){
             const clearedState = currentStatus;
+
             stopMusic();
             setPaused(false);
             programmaticUnlock();
 
-            document.getElementById('game-hud').style.display = 'none';
-            document.getElementById('noise-ui').style.display = 'none';
-            document.getElementById('stage-indicator').style.display = 'none';
+            elGameHUD.style.display = 'none';
+            elNoiseUI.style.display = 'none';
+            elStageIndicator.style.display = 'none';
+            elStatusBox.style.display = 'none';
+            elCrosshair.style.display = 'none';
             hideAllOverlays();
             clearTransientUI();
 
-            if (clearedState === STATE.TUTORIAL) {
+            if(clearedState === STATE.TUTORIAL){
                 currentStatus = STATE.MENU;
-                clearMaze();
-                portal.visible = false;
-                monster.visible = false;
-                scene.fog.color.setHex(0x000000);
-                scene.background.copy(scene.fog.color);
-
-                document.getElementById('screen-menu').style.display = 'flex';
-                document.getElementById('title-text').innerText = "教學協議完成";
-                document.getElementById('btn-group').style.display = 'block';
+                resetMenuScene();
+                elMenu.style.display = 'flex';
+                elTitle.textContent = '教學協議完成';
+                elBtnGroup.style.display = 'block';
                 return;
             }
 
-            if (currentLevelIdx >= LEVELS.length - 1) {
+            if(currentLevelIdx >= LEVELS.length - 1){
                 currentStatus = STATE.SUMMARY;
-                document.getElementById('summary-overlay').style.display = 'flex';
-                document.getElementById('final-stats').innerHTML =
-                    `觸發警報：${gameStats.alerts} 次<br>任務狀態：完美生還`;
-            } else {
+                resetMenuScene();
+                elSummary.style.display = 'flex';
+                elFinalStats.innerHTML =
+                    `總存活時間：${Math.floor(gameStats.totalTime)} 秒<br>` +
+                    `觸發警戒：${gameStats.alerts} 次<br>` +
+                    `總死亡：${gameStats.deaths} 次<br>` +
+                    `任務狀態：完整撤離`;
+            }else{
                 currentStatus = STATE.TRANSITION;
                 const nextLvl = LEVELS[currentLevelIdx + 1];
-                document.getElementById('transition-overlay').style.display = 'flex';
-                document.getElementById('trans-title').innerText = `SECTOR ${currentLevelIdx + 1} CLEARED`;
-                document.getElementById('trans-stats').innerHTML =
+                resetMenuScene();
+                elTransition.style.display = 'flex';
+                elTransTitle.textContent = `SECTOR ${currentLevelIdx + 1} CLEAR`;
+                elTransStats.innerHTML =
                     `解鎖下一區域：<span style="color:#00ffcc">${nextLvl.envName}</span><br>` +
-                    `下一層更大，也更會追。`;
+                    `提示輔助：${nextLvl.beatAssist ? 'ON' : 'OFF'}<br>` +
+                    `準備深潛…`;
                 currentLevelIdx++;
             }
         }
 
-        function endGame(win, reason = '') {
+        function endGame(win, reason = ''){
             clearTransientUI();
-            if (win) {
+
+            if(win){
                 stopMusic();
                 currentStatus = STATE.WIN;
-                victoryTimer = 1.35;
-                spawnParticleBurst(camera.position, 0x00ffcc, 60);
-                showMsg("撤離成功：音律已完成收束", 1400);
+                victoryTimer = 1.25;
+                spawnParticleBurst(camera.position, 0x00ffcc, 54);
+                showMsg('撤離成功：區域已收束', 1400);
                 return;
             }
+
+            gameStats.deaths++;
 
             stopMusic();
             currentStatus = STATE.MENU;
             setPaused(false);
             programmaticUnlock();
 
-            document.getElementById('game-hud').style.display = 'none';
-            document.getElementById('noise-ui').style.display = 'none';
-            document.getElementById('stage-indicator').style.display = 'none';
+            elGameHUD.style.display = 'none';
+            elNoiseUI.style.display = 'none';
+            elStageIndicator.style.display = 'none';
+            elStatusBox.style.display = 'none';
+            elCrosshair.style.display = 'none';
             hideAllOverlays();
 
-            clearMaze();
-            portal.visible = false;
-            monster.visible = false;
-            scene.fog.color.setHex(0x000000);
-            scene.background.copy(scene.fog.color);
+            resetMenuScene();
 
-            document.getElementById('screen-menu').style.display = 'flex';
-            document.getElementById('title-text').innerText = "SYSTEM COLLAPSE";
-            document.getElementById('btn-group').style.display = 'block';
+            elMenu.style.display = 'flex';
+            elTitle.textContent = 'SYSTEM COLLAPSE';
+            elBtnGroup.style.display = 'block';
 
-            if (reason) {
-                const dr = document.getElementById('death-reason');
-                dr.innerText = `[ DEATH: ${reason} ]`;
-                dr.style.display = 'block';
+            if(reason){
+                elDeathReason.textContent = `[ DEATH: ${reason} ]`;
+                elDeathReason.style.display = 'block';
             }
         }
 
-        async function enterState(state, isFullReset = false) {
-            if (isTransitioning) return;
+        async function enterState(state, isFullReset = false){
+            if(isTransitioning) return;
             isTransitioning = true;
 
-            try {
+            try{
                 const ready = await loadAudio();
-                if (!ready) {
-                    showMsg("音訊尚未就緒，無法開始");
+                if(!ready){
+                    showMsg('音訊尚未就緒，無法開始');
                     return;
                 }
 
@@ -1039,39 +1448,83 @@
                 setPaused(false);
                 stopMusic();
                 resetSession(isFullReset);
-
                 hideAllOverlays();
-                document.getElementById('game-hud').style.display = 'block';
 
                 let curLvl = {
-                    w: 11,
-                    h: 11,
-                    alertHigh: 999,
-                    alertLow: 0,
-                    mType: 'hunter',
-                    envName: 'TUTORIAL',
-                    fog: 0x051115,
-                    flash: 0x00ffff,
-                    beatAssist: true,
-                    loops: 0.10,
-                    rooms: 1
+                    w:15, h:15,
+                    envName:'TUTORIAL',
+                    mType:'hunter',
+                    fog:0x07161c,
+                    flash:0x00ffff,
+                    beatAssist:true,
+                    rooms:2,
+                    loops:10,
+                    grace:4.0
                 };
 
-                if (state === STATE.GAME) {
+                if(state === STATE.GAME){
                     curLvl = LEVELS[currentLevelIdx];
                     activeMonsterDef = MONSTER_TYPES[curLvl.mType];
-
-                    document.getElementById('env-name').innerText = curLvl.envName;
-                    const tc = document.getElementById('threat-class');
-                    tc.innerText = `THREAT: ${activeMonsterDef.name}`;
-                    tc.style.color = '#' + activeMonsterDef.color.toString(16).padStart(6, '0');
-
-                    document.getElementById('stage-indicator').style.display = 'block';
-                    document.getElementById('noise-ui').style.display = 'block';
-                    showMsg("系統啟動：先聽聲，再動身。你有 4 秒觀察期。", 2600);
-                } else {
+                }else{
                     activeMonsterDef = MONSTER_TYPES.hunter;
                 }
+
+                beatAssistEnabled = !!curLvl.beatAssist;
+                graceTimer = curLvl.grace;
+
+                mazeW = curLvl.w;
+                mazeH = curLvl.h;
+
+                const seed = state === STATE.TUTORIAL ? 101 : Math.floor(Math.random() * 999999);
+                const rnd = seededRandom(seed);
+
+                mazeGrid = generateMaze(mazeW, mazeH, rnd, curLvl.rooms, curLvl.loops);
+                buildMazeMeshes();
+
+                const openCells = getOpenReachableCells();
+                const portalCell = openCells[openCells.length - 1];
+                const monsterCell = openCells[openCells.length - 2];
+
+                const pickPool = openCells.filter(c =>
+                    !(c.x === portalCell.x && c.z === portalCell.z) &&
+                    !(c.x === monsterCell.x && c.z === monsterCell.z)
+                );
+
+                const used = new Set();
+                function pickAtPercent(p){
+                    const idx = clamp(Math.floor(pickPool.length * p), 0, pickPool.length - 1);
+                    let cell = pickPool[idx];
+                    let cursor = idx;
+                    while(cell && used.has(`${cell.x},${cell.z}`) && cursor < pickPool.length - 1){
+                        cursor++;
+                        cell = pickPool[cursor];
+                    }
+                    used.add(`${cell.x},${cell.z}`);
+                    return cell;
+                }
+
+                portal.position.set(worldX(portalCell.x), 2.0, worldZ(portalCell.z));
+                portalGlow.position.copy(portal.position);
+                portalGlow.position.y = 2.6;
+
+                if(state === STATE.TUTORIAL){
+                    const tNote = pickAtPercent(0.35);
+                    spawnNote(1, worldX(tNote.x), worldZ(tNote.z));
+                }else{
+                    const c1 = pickAtPercent(0.28);
+                    const c2 = pickAtPercent(0.58);
+                    const c3 = pickAtPercent(0.82);
+
+                    spawnNote(1, worldX(c1.x), worldZ(c1.z));
+                    spawnNote(2, worldX(c2.x), worldZ(c2.z));
+                    spawnNote(3, worldX(c3.x), worldZ(c3.z));
+
+                    monster.position.set(worldX(monsterCell.x), 2.1, worldZ(monsterCell.z));
+                    monster.visible = true;
+                }
+
+                camera.position.set(worldX(1), 1.62, worldZ(1));
+                controls.lock();
 
                 scene.fog.color.setHex(curLvl.fog);
                 scene.background.copy(scene.fog.color);
@@ -1079,398 +1532,419 @@
                 monster.material.color.setHex(activeMonsterDef.color);
                 chargeRing.material.color.setHex(activeMonsterDef.color);
 
-                mazeW = curLvl.w;
-                mazeH = curLvl.h;
+                elGameHUD.style.display = 'block';
+                elNoiseUI.style.display = state === STATE.GAME ? 'block' : 'none';
+                elStageIndicator.style.display = state === STATE.GAME ? 'block' : 'none';
+                elStatusBox.style.display = state === STATE.GAME ? 'block' : 'none';
+                elCrosshair.style.display = state === STATE.GAME ? 'block' : 'none';
 
-                const seed = state === STATE.TUTORIAL ? 101 : Math.floor(Math.random() * 999999);
-                const rnd = seededRandom(seed);
-                mazeGrid = generateBraidedMaze(mazeW, mazeH, rnd, curLvl.loops, curLvl.rooms);
-                buildMazeFromGrid();
+                if(state === STATE.GAME){
+                    elEnvName.textContent = curLvl.envName;
+                    elThreatClass.textContent = `THREAT: ${activeMonsterDef.name}`;
+                    elThreatClass.style.color = `#${activeMonsterDef.color.toString(16).padStart(6,'0')}`;
+                    elAssistNote.textContent = `ASSIST: ${beatAssistEnabled ? 'ON' : 'OFF'}`;
+                    elAssistNote.style.color = beatAssistEnabled ? '#00ffcc' : '#ff3b30';
 
-                const openCells = chooseOpenCellsForLevel();
-                const portalCell = openCells[openCells.length - 1];
-                const monsterCell = openCells[Math.max(0, openCells.length - Math.floor(openCells.length * 0.22))];
-
-                portal.position.copy(cellToWorld(portalCell.x, portalCell.z, 2));
-
-                if (state === STATE.TUTORIAL) {
-                    const tNote = openCells[Math.floor(openCells.length * 0.35)];
-                    spawnNote(1, tNote.x * GRID_SIZE - (mazeW * 3), tNote.z * GRID_SIZE - (mazeH * 3));
-                } else {
-                    const used = new Set([`${portalCell.x},${portalCell.z}`, `${monsterCell.x},${monsterCell.z}`]);
-                    const noteCandidates = openCells.filter(c => !used.has(`${c.x},${c.z}`));
-
-                    const picks = [0.22, 0.48, 0.72];
-                    picks.forEach((p, i) => {
-                        const c = noteCandidates[Math.floor(noteCandidates.length * p)];
-                        used.add(`${c.x},${c.z}`);
-                        spawnNote(i + 1, c.x * GRID_SIZE - (mazeW * 3), c.z * GRID_SIZE - (mazeH * 3));
-                    });
-
-                    monster.position.copy(cellToWorld(monsterCell.x, monsterCell.z, 2.1));
-                    monster.visible = true;
+                    showMsg(`進入 ${curLvl.envName} … 開局 ${curLvl.grace.toFixed(1)} 秒觀察期`, 2200);
+                }else{
+                    showMsg('教學：先拿到 1 顆音軌碎片', 2200);
                 }
 
-                portal.visible = false;
-                camera.position.set(-(mazeW * 3) + GRID_SIZE, 1.6, -(mazeH * 3) + GRID_SIZE);
-
-                controls.lock();
+                updateObjectiveUI();
 
                 musicStartAbsTime = await startMusic();
-                if (musicStartAbsTime === null) {
-                    endGame(false);
+                if(musicStartAbsTime === null){
+                    showMsg('啟動失敗');
+                    endGame(false, DEATH_REASON.CONTACT);
                     return;
                 }
                 nextBeatTime = musicStartAbsTime + BEAT_OFFSET;
-            } finally {
+            }finally{
                 isTransitioning = false;
             }
         }
 
-        function applyMonsterBeatLogic() {
-            if (currentStatus !== STATE.GAME || graceTimer > 0 || !monster.visible) return;
+        // =========================
+        // 11) AI
+        // =========================
+        function moveMonsterOneChaseBurst(chaseMap, steps){
+            let cur = worldToCell(monster.position);
+            let curX = cur.x;
+            let curZ = cur.z;
 
-            const pCell = worldToCell(camera.position);
-            const mCell = worldToCell(monster.position);
-            const chaseMap = getDistanceMap(mazeGrid, pCell.x, pCell.z);
+            for(let s=0; s<steps; s++){
+                let best = {
+                    x:curX,
+                    z:curZ,
+                    d:chaseMap[curZ]?.[curX] ?? Infinity
+                };
 
-            if (monsterStatus === AI_STATE.RECOVER) {
-                monsterStatus = AI_STATE.HUNT;
-                return;
-            }
-
-            if (monsterStatus === AI_STATE.HUNT) {
-                const chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
-                if (beatCount % chargeFreq === 0) {
-                    monsterStatus = AI_STATE.CHARGE;
-                    aiTimer = 0;
-                    screenShake = isAlertActive ? 0.6 : 0.35;
-                    showMsg(isAlertActive ? "狂暴相位：牠聽到你了" : "偵測相位蓄力", 850);
-                    return;
-                }
-
-                const huntEvery = isAlertActive ? activeMonsterDef.alertHuntEvery : activeMonsterDef.huntEvery;
-                if (beatCount % huntEvery !== 0) return;
-
-                const steps =
-                    (notesCollected === 3 ? activeMonsterDef.end : activeMonsterDef.base) +
-                    (isAlertActive ? activeMonsterDef.alertBonus : 0);
-
-                let curX = mCell.x;
-                let curZ = mCell.z;
-
-                for (let s = 0; s < steps; s++) {
-                    let best = { x: curX, z: curZ, d: chaseMap[curZ]?.[curX] ?? Infinity };
-                    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dz]) => {
-                        const d = chaseMap[curZ + dz]?.[curX + dx];
-                        if (d !== undefined && d !== -1 && d < best.d) {
-                            best = { x: curX + dx, z: curZ + dz, d };
-                        }
-                    });
-                    curX = best.x;
-                    curZ = best.z;
-                }
-
-                queueMonsterMove(curX, curZ, Math.max(0.16, BEAT_INT * 0.78));
-            }
-        }
-
-        function doDashMove() {
-            const pCell = worldToCell(camera.position);
-            const mCell = worldToCell(monster.position);
-            const chaseMap = getDistanceMap(mazeGrid, pCell.x, pCell.z);
-
-            let curX = mCell.x;
-            let curZ = mCell.z;
-
-            for (let s = 0; s < activeMonsterDef.dash; s++) {
-                let best = { x: curX, z: curZ, d: chaseMap[curZ]?.[curX] ?? Infinity };
-                [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dz]) => {
-                    const d = chaseMap[curZ + dz]?.[curX + dx];
-                    if (d !== undefined && d !== -1 && d < best.d) {
-                        best = { x: curX + dx, z: curZ + dz, d };
+                for(const [dx, dz] of [[0,1],[0,-1],[1,0],[-1,0]]){
+                    const nx = curX + dx;
+                    const nz = curZ + dz;
+                    const d = chaseMap[nz]?.[nx];
+                    if(d !== undefined && d !== -1 && d < best.d){
+                        best = { x:nx, z:nz, d };
                     }
-                });
+                }
+
                 curX = best.x;
                 curZ = best.z;
             }
 
-            monsterStatus = AI_STATE.DASH;
-            queueMonsterMove(curX, curZ, 0.18);
-            screenShake = 0.9;
+            monster.position.x = worldX(curX);
+            monster.position.z = worldZ(curZ);
         }
 
-        function updateMonsterVisual(now) {
-            if (!monster.visible) return;
+        function handleBeat(){
+            if(currentStatus !== STATE.GAME) return;
+            if(graceTimer > 0) return;
 
-            let targetOpacity = 0;
-            if (monsterStatus === AI_STATE.CHARGE) {
-                targetOpacity = 0.88 + Math.sin(now * 22) * 0.12;
-                monster.material.wireframe = false;
-            } else if (monsterStatus === AI_STATE.DASH) {
-                targetOpacity = 0.95;
-                monster.material.wireframe = false;
-            } else if (sonarRevealTimer > 0) {
-                targetOpacity = 0.48;
-                monster.material.wireframe = true;
-            } else {
-                targetOpacity = 0.0;
-                monster.material.wireframe = true;
+            const pCell = worldToCell(camera.position);
+            const chaseMap = getDistanceMap(mazeGrid, pCell.x, pCell.z);
+
+            const isAssistBeat = ((beatCount + ASSIST_PHASE) % ASSIST_EVERY_N_BEATS) === 0;
+
+            if(isAssistBeat && beatAssistEnabled){
+                sonarRevealTimer = 0.15;
             }
 
-            monster.material.opacity = Math.max(0, targetOpacity);
+            if(monsterStatus === AI_STATE.HUNT){
+                const shouldMove = beatCount % (isAlertActive ? activeMonsterDef.alertMoveEvery : activeMonsterDef.moveEvery) === 0;
+                if(shouldMove){
+                    const baseSteps = notesCollected === 3 ? activeMonsterDef.end : activeMonsterDef.base;
+                    const huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0);
+                    moveMonsterOneChaseBurst(chaseMap, huntSteps);
+                }
 
-            if (monsterStatus === AI_STATE.CHARGE) {
-                chargeRing.visible = true;
-                chargeRing.position.copy(monster.position);
-                chargeRing.position.y = 0.1;
-                const ringScale = isAlertActive ? 3.1 : 2.1;
-                chargeRing.scale.setScalar(1 + aiTimer * ringScale);
-                chargeRing.material.opacity = Math.max(0, 1 - aiTimer / activeMonsterDef.chargeTime);
-            } else {
-                chargeRing.visible = false;
+                const chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
+                if(beatCount % chargeFreq === 0){
+                    monsterStatus = AI_STATE.CHARGE;
+                    aiTimer = 0;
+                    screenShake = isAlertActive ? 0.55 : 0.34;
+                    showMsg(isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動', 800);
+                }
+            }
+            else if(monsterStatus === AI_STATE.DASH){
+                moveMonsterOneChaseBurst(chaseMap, activeMonsterDef.dash);
+                monsterStatus = AI_STATE.RECOVER;
+            }
+            else if(monsterStatus === AI_STATE.RECOVER){
+                monsterStatus = AI_STATE.HUNT;
             }
         }
 
-        function animate() {
+        // =========================
+        // 12) Main loop
+        // =========================
+        function animate(){
             requestAnimationFrame(animate);
 
             const dt = Math.min(clock.getDelta(), 0.05);
             const now = audioCtx ? audioCtx.currentTime : 0;
 
             updateParticles(dt);
-            updateMonsterMotion(dt);
 
-            if (dashContactTimer > 0) dashContactTimer -= dt;
-            if (graceTimer > 0) graceTimer -= dt;
-            if (sonarRevealTimer > 0) sonarRevealTimer -= dt;
-            if (beatBuffTimer > 0) beatBuffTimer -= dt;
-
-            if (currentStatus === STATE.WIN) {
+            if(currentStatus === STATE.WIN){
                 victoryTimer -= dt;
-                if (victoryTimer <= 0) handleLevelClear();
-                renderer.render(scene, camera);
-                return;
-            }
-
-            if (currentStatus !== STATE.GAME && currentStatus !== STATE.TUTORIAL) {
-                renderer.render(scene, camera);
-                return;
-            }
-
-            if (isPaused) {
-                renderer.render(scene, camera);
-                return;
-            }
-
-            if (controls.isLocked) {
-                const nearestAssist = getNearestAssistBeat(now);
-                const timeToNearestAssist = Math.abs(now - nearestAssist.time);
-                const isTryingToMove = keys['w'] || keys['s'] || keys['a'] || keys['d'];
-                const isBeatWindow = timeToNearestAssist <= ON_BEAT_WINDOW;
-
-                let frameBeatBoost = false;
-                if (currentStatus === STATE.GAME && isTryingToMove && isBeatWindow && LEVELS[currentLevelIdx].beatAssist) {
-                    frameBeatBoost = true;
-                    if (nearestAssist.id !== lastRewardedAssistBeatId) {
-                        beatBuffTimer = ON_BEAT_BUFF_TIME;
-                        lastRewardedAssistBeatId = nearestAssist.id;
-                    }
+                if(victoryTimer <= 0){
+                    handleLevelClear();
                 }
+                renderer.render(scene, camera);
+                return;
+            }
 
+            if(currentStatus !== STATE.GAME && currentStatus !== STATE.TUTORIAL){
+                renderer.render(scene, camera);
+                return;
+            }
+
+            if(isPaused){
+                renderer.render(scene, camera);
+                return;
+            }
+
+            if(controls.isLocked){
                 _oldPos.copy(camera.position);
 
-                const sprinting = !!keys['shift'];
-                const baseMoveSpeed = (sprinting ? 10 : 6) * dt;
-                const finalMoveSpeed = baseMoveSpeed * ((beatBuffTimer > 0 || frameBeatBoost) ? ON_BEAT_SPEED_MULT : 1.0);
+                if(graceTimer > 0) graceTimer -= dt;
+                if(sonarRevealTimer > 0) sonarRevealTimer -= dt;
+                if(beatBuffTimer > 0) beatBuffTimer -= dt;
 
-                if (keys['w']) controls.moveForward(finalMoveSpeed);
-                if (keys['s']) controls.moveForward(-finalMoveSpeed);
-                if (keys['a']) controls.moveRight(-(finalMoveSpeed * (5 / 6)));
-                if (keys['d']) controls.moveRight(finalMoveSpeed * (5 / 6));
-
-                _playerBox.setFromCenterAndSize(camera.position, new THREE.Vector3(1.5, 3, 1.5));
-                for (const w of walls) {
-                    _wallBox.setFromObject(w);
-                    if (_playerBox.intersectsBox(_wallBox)) {
-                        camera.position.copy(_oldPos);
-                        break;
-                    }
-                }
+                const movementState = movePlayer(dt);
 
                 const distMoved = _oldPos.distanceTo(camera.position);
-                const distToMonster = monster.visible ? camera.position.distanceTo(monster.position) : 999;
+                const distToMonster = camera.position.distanceTo(monster.position);
 
-                if (currentStatus === STATE.GAME) {
-                    const curLvl = LEVELS[currentLevelIdx];
+                // noise
+                if(currentStatus === STATE.GAME){
+                    gameStats.totalTime += dt;
 
-                    if (distMoved > 0.001) {
-                        const noiseGain = (sprinting ? 72 : 24) * dt;
-                        const noiseMult = frameBeatBoost && curLvl.beatAssist ? ON_BEAT_NOISE_MULT : 1.0;
-                        playerNoise = Math.min(100, playerNoise + noiseGain * noiseMult);
-                    } else {
-                        playerNoise = Math.max(0, playerNoise - 42 * dt);
+                    if(distMoved > 0.001){
+                        const baseNoise = keys['shift'] ? 72 : 24;
+                        const mult = (movementState.inBeatWindow && beatAssistEnabled) ? ON_BEAT_NOISE_MULT : 1.0;
+                        playerNoise = Math.min(100, playerNoise + baseNoise * dt * mult);
+                    }else{
+                        playerNoise = Math.max(0, playerNoise - 38 * dt);
                     }
 
-                    if (playerNoise >= curLvl.alertHigh && !isAlertActive) {
+                    const curLvl = LEVELS[currentLevelIdx];
+                    if(playerNoise >= curLvl.alertHigh && !isAlertActive){
                         isAlertActive = true;
                         gameStats.alerts++;
-                        showMsg("噪音超載：牠已鎖定你的腳步", 1350);
-                    } else if (playerNoise <= curLvl.alertLow && isAlertActive) {
+                        showMsg('紅色＝危險。你把牠吵醒了。', 1200);
+                    }else if(playerNoise <= curLvl.alertLow && isAlertActive){
                         isAlertActive = false;
-                        showMsg("威脅下降：暫時甩開追蹤", 1200);
+                        showMsg('威脅下降：你重新躲回安靜區了。', 1200);
                     }
 
-                    const noiseBar = document.getElementById('noise-bar');
-                    const noiseText = document.getElementById('noise-text');
-                    noiseBar.style.width = playerNoise + '%';
-
-                    if (isAlertActive) {
-                        noiseBar.style.background = '#f00';
-                        noiseText.innerText = `[ ALERT ]`;
-                        noiseText.style.color = '#f00';
-                    } else if (beatBuffTimer > 0 && curLvl.beatAssist) {
-                        noiseBar.style.background = '#00ffcc';
-                        noiseText.innerText = `[ ON BEAT ]`;
-                        noiseText.style.color = '#00ffcc';
-                    } else {
-                        noiseBar.style.background = '#fff';
-                        noiseText.innerText = '[ NOISE LEVEL ]';
-                        noiseText.style.color = '#aaa';
+                    // UI semantics: cyan advantage, red danger
+                    elNoiseBar.style.width = `${playerNoise}%`;
+                    if(isAlertActive){
+                        elNoiseBar.style.background = '#ff3b30';
+                        elNoiseText.textContent = '[ ALERT ]';
+                        elNoiseText.style.color = '#ff3b30';
+                    }else if(beatBuffTimer > 0){
+                        elNoiseBar.style.background = '#00ffcc';
+                        elNoiseText.textContent = '[ ON BEAT : SPEED+ / NOISE- ]';
+                        elNoiseText.style.color = '#00ffcc';
+                    }else{
+                        elNoiseBar.style.background = '#ffffff';
+                        elNoiseText.textContent = '[ NOISE LEVEL ]';
+                        elNoiseText.style.color = '#aaa';
                     }
 
-                    const targetFogHex = (isAlertActive || monsterStatus === AI_STATE.CHARGE) ? activeMonsterDef.color : curLvl.fog;
+                    // proximity edge warning
+                    const edgeDanger =
+                        monsterStatus === AI_STATE.DASH ? clamp((5.5 - distToMonster) / 3.3, 0, 1) :
+                        clamp((4.8 - distToMonster) / 3.1, 0, 1);
+                    elEdgeWarning.style.opacity = String(edgeDanger * 0.9);
+
+                    // environmental danger tint
+                    const targetFogHex = (isAlertActive || monsterStatus === AI_STATE.CHARGE || monsterStatus === AI_STATE.DASH)
+                        ? activeMonsterDef.color
+                        : LEVELS[currentLevelIdx].fog;
                     _targetColor.setHex(targetFogHex);
-                    scene.fog.color.lerp(_targetColor, dt * 2);
+                    scene.fog.color.lerp(_targetColor, dt * 1.6);
                     scene.background.copy(scene.fog.color);
 
-                    updateThreatAudio(distToMonster);
+                    updateStemMix(now);
 
-                    if (distToMonster < 2.15 && graceTimer <= 0) {
-                        let cause = DEATH_REASON.CONTACT;
-                        if (monsterStatus === AI_STATE.DASH || dashContactTimer > 0) cause = DEATH_REASON.DASH;
-                        else if (isAlertActive) cause = DEATH_REASON.ALERT;
-                        endGame(false, cause);
-                    }
-
-                    if (notesCollected === 3 && camera.position.distanceTo(portal.position) < 3.6) {
-                        endGame(true);
+                    // status text
+                    if(graceTimer > 0){
+                        elStatusMain.textContent = `OBSERVE WINDOW ${graceTimer.toFixed(1)}s`;
+                        elStatusSub.textContent = '這段時間怪物不追你，先看路、先聽聲。';
+                    }else if(monsterStatus === AI_STATE.CHARGE){
+                        elStatusMain.textContent = 'DANGER : CHARGE';
+                        elStatusSub.textContent = '紅色只是更危險，不代表怪物才剛存在。';
+                    }else if(monsterStatus === AI_STATE.DASH){
+                        elStatusMain.textContent = 'DANGER : DASH';
+                        elStatusSub.textContent = '這時別硬衝直線，優先切角。';
+                    }else if(isAlertActive){
+                        elStatusMain.textContent = 'ALERT ACTIVE';
+                        elStatusSub.textContent = '噪音太高。停、繞、等下一個節拍。';
+                    }else{
+                        updateObjectiveUI();
                     }
                 }
 
-                if (nextBeatTime > 0) {
-                    while (now >= nextBeatTime) {
+                // beat timeline
+                if(nextBeatTime > 0){
+                    while(now >= nextBeatTime){
                         beatCount++;
 
-                        const curLvl = currentStatus === STATE.GAME ? LEVELS[currentLevelIdx] : { beatAssist: true };
                         const isAssistBeat = ((beatCount + ASSIST_PHASE) % ASSIST_EVERY_N_BEATS) === 0;
-
-                        if (currentStatus === STATE.GAME && isAssistBeat && curLvl.beatAssist) {
-                            playBeatClick(nextBeatTime, true);
-                            if (graceTimer <= 0) sonarRevealTimer = 0.15;
+                        if(isAssistBeat && beatAssistEnabled){
+                            playBeatClick(nextBeatTime);
                         }
 
-                        applyMonsterBeatLogic();
+                        handleBeat();
                         nextBeatTime += BEAT_INT;
                     }
                 }
 
-                if (monsterStatus === AI_STATE.CHARGE) {
-                    aiTimer += dt;
-                    if (aiTimer >= activeMonsterDef.chargeTime) {
-                        doDashMove();
-                    }
-                }
-
-                if (analyser && dataArray) {
+                // analyser / flashlight / monster readability
+                if(analyser && dataArray){
                     analyser.getByteFrequencyData(dataArray);
                     const kick = (dataArray[1] + dataArray[2]) / 510;
-                    flashLight.intensity = Math.pow(kick, 5) * 18;
                     flashLight.position.copy(camera.position);
-                } else {
-                    flashLight.intensity = 0;
-                    flashLight.position.copy(camera.position);
+                    flashLight.intensity = Math.pow(kick, 4.5) * 15;
                 }
 
-                updateMonsterVisual(now);
+                if(monster.visible){
+                    let targetOpacity = 0;
+                    if(monsterStatus === AI_STATE.CHARGE){
+                        targetOpacity = 0.88 + Math.sin(now * 18) * 0.1;
+                        monster.material.wireframe = false;
+                    }else if(monsterStatus === AI_STATE.DASH){
+                        targetOpacity = 1.0;
+                        monster.material.wireframe = false;
+                    }else if(sonarRevealTimer > 0){
+                        targetOpacity = 0.55;
+                        monster.material.wireframe = true;
+                    }else{
+                        targetOpacity = 0.07; // faint existence, so不是突然無中生有
+                        monster.material.wireframe = true;
+                    }
+                    monster.material.opacity = targetOpacity;
+                }
 
-                for (let i = noteCubes.length - 1; i >= 0; i--) {
+                // charge ring
+                if(monsterStatus === AI_STATE.CHARGE){
+                    chargeRing.visible = true;
+                    chargeRing.position.copy(monster.position);
+                    chargeRing.position.y = 0.08;
+                    const ringScale = isAlertActive ? 3.4 : 2.5;
+                    chargeRing.scale.setScalar(1 + aiTimer * ringScale);
+                    chargeRing.material.opacity = clamp(1 - aiTimer, 0, 1);
+                }else{
+                    chargeRing.visible = false;
+                }
+
+                // portal
+                if(portal.visible){
+                    portal.rotation.x += dt * 1.2;
+                    portal.rotation.y += dt * 1.4;
+                    portalGlow.visible = true;
+                    portalGlow.intensity = 0.8 + Math.sin(now * 4) * 0.25;
+                }else{
+                    portalGlow.visible = false;
+                }
+
+                // notes collect
+                for(let i = noteCubes.length - 1; i >= 0; i--){
                     const n = noteCubes[i];
-                    n.rotation.y += dt * 3;
-                    n.position.y = n.userData.baseY + Math.sin(now * 4) * 0.2;
+                    n.rotation.y += dt * 2.8;
+                    n.position.y = n.userData.baseY + Math.sin(now * 3.5) * 0.18;
 
-                    if (camera.position.distanceTo(n.position) < 2.4) {
-                        const stem = stems[n.userData.id];
-                        if (stem?.gain && audioCtx) stem.gain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.45);
-                        document.getElementById('s' + n.userData.id).style.color = '#fff';
-                        spawnParticleBurst(n.position, STEM_COLORS[n.userData.id], 30);
+                    if(camera.position.distanceTo(n.position) < 2.45){
+                        const id = n.userData.id;
+                        currentCollectedIds.add(id);
+                        notesCollected = currentCollectedIds.size;
+
+                        if(id === 1) elS1.style.color = '#fff';
+                        if(id === 2) elS2.style.color = '#fff';
+                        if(id === 3) elS3.style.color = '#fff';
+
+                        spawnParticleBurst(n.position, STEM_COLORS[id] || 0xffffff, 28);
 
                         n.material.dispose();
                         scene.remove(n);
                         noteCubes.splice(i, 1);
-                        notesCollected++;
 
-                        if (notesCollected === 3) {
+                        if(notesCollected === 3){
                             portal.visible = true;
-                            showMsg("撤離門已同步：現在開始真正的追逐", 1800);
                             spawnRipple(portal.position);
+                            showMsg('青色傳送門已開：現在可以撤離', 1600);
+                        }else{
+                            showMsg(`已收集音軌碎片 ${notesCollected} / 3`, 1100);
                         }
+
+                        updateObjectiveUI();
                     }
                 }
 
-                if (currentStatus === STATE.TUTORIAL && notesCollected >= 1) {
-                    if (tutorialTimer < 0) {
-                        tutorialTimer = 1.4;
-                        showMsg("教學完成", 1000);
+                // tutorial clear
+                if(currentStatus === STATE.TUTORIAL && notesCollected >= 1){
+                    if(tutorialTimer < 0){
+                        tutorialTimer = 1.1;
+                        showMsg('教學完成', 900);
                     }
                     tutorialTimer -= dt;
-                    if (tutorialTimer <= 0) handleLevelClear();
+                    if(tutorialTimer <= 0){
+                        handleLevelClear();
+                    }
+                }
+
+                // lethal checks
+                if(currentStatus ===
+                if(currentStatus === STATE.GAME && graceTimer <= 0){
+                    const lethalDist = monsterStatus === AI_STATE.DASH
+                        ? activeMonsterDef.dashLethalDist
+                        : activeMonsterDef.lethalDist;
+
+                    if(distToMonster < lethalDist){
+                        let cause = DEATH_REASON.CONTACT;
+                        if(monsterStatus === AI_STATE.DASH) cause = DEATH_REASON.DASH_HIT;
+                        else if(isAlertActive) cause = DEATH_REASON.ALERT_CHASE;
+                        else if(collidesAt(camera.position.x, camera.position.z)) cause = DEATH_REASON.TRAPPED;
+                        endGame(false, cause);
+                    }
+
+                    if(portal.visible && camera.position.distanceTo(portal.position) < 3.4){
+                        endGame(true);
+                    }
+                }
+
+                if(monsterStatus === AI_STATE.CHARGE){
+                    aiTimer += dt;
+                    if(aiTimer > 0.75){
+                        monsterStatus = AI_STATE.DASH;
+                    }
                 }
 
                 _renderPos.copy(camera.position);
-                if (screenShake > 0) {
+                if(screenShake > 0){
                     camera.position.x += (Math.random() - 0.5) * screenShake;
                     camera.position.y += (Math.random() - 0.5) * screenShake * 0.5;
-                    screenShake = Math.max(0, screenShake - dt * 2.2);
+                    screenShake = Math.max(0, screenShake - dt * 2.3);
                 }
 
                 renderer.render(scene, camera);
                 camera.position.copy(_renderPos);
-            } else {
+            }else{
                 renderer.render(scene, camera);
             }
         }
 
+        // =========================
+        // 13) Events
+        // =========================
         controls.addEventListener('unlock', async () => {
-            if (suppressUnlockPause) {
+            if(suppressUnlockPause){
                 suppressUnlockPause = false;
                 return;
             }
-            if ((currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL) && !document.hidden && !isPaused) {
+            if((currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL) && !document.hidden && !isPaused){
                 setPaused(true);
-                if (audioCtx?.state === 'running') await audioCtx.suspend();
-                showMsg("已暫停", 800);
+                if(audioCtx?.state === 'running'){
+                    await audioCtx.suspend();
+                }
+                showMsg('已暫停', 700);
             }
         });
 
         controls.addEventListener('lock', async () => {
-            if (isPaused) {
-                if (audioCtx?.state === 'suspended') await audioCtx.resume();
+            if(isPaused){
+                if(audioCtx?.state === 'suspended'){
+                    await audioCtx.resume();
+                }
                 clock.getDelta();
                 setPaused(false);
             }
         });
 
         document.addEventListener('visibilitychange', async () => {
-            if (document.hidden) {
-                if (currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL) setPaused(true);
-                if (audioCtx?.state === 'running') await audioCtx.suspend();
-                if (controls.isLocked) programmaticUnlock();
+            if(document.hidden){
+                if(currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL){
+                    setPaused(true);
+                }
+                if(audioCtx?.state === 'running'){
+                    await audioCtx.suspend();
+                }
+                if(controls.isLocked){
+                    programmaticUnlock();
+                }
             }
         });
 
-        window.onkeydown = e => keys[e.key.toLowerCase()] = true;
-        window.onkeyup = e => keys[e.key.toLowerCase()] = false;
+        window.addEventListener('keydown', e => {
+            keys[e.key.toLowerCase()] = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            keys[e.key.toLowerCase()] = false;
+        });
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -1480,27 +1954,21 @@
 
         document.getElementById('btn-tutorial').onclick = () => enterState(STATE.TUTORIAL, true);
         document.getElementById('btn-start').onclick = () => enterState(STATE.GAME, true);
-        document.getElementById('btn-resume').onclick = () => { if (isPaused) controls.lock(); };
         document.getElementById('btn-next-stage').onclick = () => enterState(STATE.GAME, false);
-
+        document.getElementById('btn-resume').onclick = () => { if(isPaused) controls.lock(); };
         document.getElementById('btn-return-menu').onclick = () => {
             hideAllOverlays();
             clearTransientUI();
             currentStatus = STATE.MENU;
             currentLevelIdx = 0;
-            gameStats = { alerts: 0 };
-
-            stopMusic();
-            clearMaze();
-            portal.visible = false;
-            monster.visible = false;
-            scene.fog.color.setHex(0x000000);
-            scene.background.copy(scene.fog.color);
-
-            document.getElementById('screen-menu').style.display = 'flex';
-            document.getElementById('title-text').innerText = "WSIDO XRTP ECHO: SOUND CELL";
+            resetSession(true);
+            resetMenuScene();
+            elTitle.textContent = 'WSIDO XRTP ECHO: SOUND CELL';
+            elMenu.style.display = 'flex';
+            elBtnGroup.style.display = 'block';
         };
 
+        // boot
         loadAudio();
         animate();
     </script>
