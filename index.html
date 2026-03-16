@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8">
+    <title>Wsido Xrtp ECHO - v1.0</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; color: #00ffcc; }
+        #ui-root { position: absolute; width: 100%; height: 100%; z-index: 1000; pointer-events: none; }
+        .overlay { position: absolute; width: 100%; height: 100%; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: all; }
+        #game-hud { position: absolute; top: 20px; left: 20px; text-shadow: 0 0 10px #00ffcc; display: none; }
+        #timer { position: absolute; top: 20px; right: 20px; font-size: 2.5rem; color: #f00; display: none; }
+        #stage-indicator { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 1.2rem; color: #aaa; display: none; text-align: center; }
+        #env-name { display: block; font-size: 1.5rem; color: #fff; font-weight: bold; letter-spacing: 2px; }
+        #threat-class { display: block; font-size: 0.9rem; margin-top: 5px; font-weight: bold; }
+        #msg-box { position: absolute; bottom: 20%; width: 100%; text-align: center; font-size: 1.5rem; color: #fff; display: none; pointer-events: none; }
+        
+        #noise-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 300px; display: none; text-align: center; color: #aaa; font-size: 0.9rem; }
+        #noise-bar-bg { width: 100%; height: 5px; background: #222; margin-top: 5px; border: 1px solid #444; }
+        #noise-bar { width: 0%; height: 100%; background: #fff; transition: width 0.1s, background 0.1s; }
+
+        button { padding: 15px 40px; border: 1px solid #00ffcc; background: none; color: #00ffcc; cursor: pointer; font-size: 1.2rem; margin: 10px; font-family: inherit; }
+        button:hover { background: #00ffcc; color: #000; }
+        .stats-text { color: #fff; font-size: 1.2rem; margin: 20px 0; text-align: center; line-height: 1.8; }
+        #load-msg { color: #888; margin-top: 10px; text-align: center; }
+        #version-tag { position: absolute; bottom: 10px; right: 10px; font-size: 0.8rem; color: #444; }
+    </style>
+</head>
+<body>
+    <div id="ui-root">
+        <div id="screen-menu" class="overlay">
+            <h1 id="title-text">WSIDO XRTP ECHO: SOUND CELL</h1>
+            <p id="load-msg">正在驗證數據協議...</p>
+            <div id="btn-group" style="display: none;">
+                <button id="btn-tutorial">教學協議</button>
+                <button id="btn-start">啟動序列修復 (START)</button>
+            </div>
+            <div id="version-tag">v1.0 Release</div>
+        </div>
+        
+        <div id="transition-overlay" class="overlay" style="display:none;">
+            <h1 style="color: #00ffcc;" id="trans-title">STAGE CLEAR</h1>
+            <p class="stats-text" id="trans-stats"></p>
+            <button id="btn-next-stage">進入下一區域 (NEXT)</button>
+        </div>
+
+        <div id="summary-overlay" class="overlay" style="display:none;">
+            <h1 style="color: #00ffcc;">PROTOCOL COMPLETE</h1>
+            <p class="stats-text" id="final-stats"></p>
+            <button id="btn-return-menu">返回主系統 (MENU)</button>
+        </div>
+
+        <div id="pause-overlay" class="overlay" style="display:none;">
+            <h1 style="color: #f00;">系統掛起 (PAUSED)</h1>
+            <button id="btn-resume">恢復連結</button>
+        </div>
+        
+        <div id="stage-indicator">
+            <span id="env-name">SECTOR</span>
+            <span id="threat-class">THREAT: HUNTER</span>
+        </div>
+        <div id="game-hud">
+            <b>[ 音律收復協議 ]</b><br>
+            KICK: <span style="color:white">ON</span> | BASS: <span id="s1" style="color:#333">MISS</span> | SYNTH: <span id="s2" style="color:#333">MISS</span> | TEXTURE: <span id="s3" style="color:#333">MISS</span>
+        </div>
+        <div id="timer">60.0</div>
+        
+        <div id="noise-ui">
+            <div id="noise-text">[ NOISE LEVEL ]</div>
+            <div id="noise-bar-bg"><div id="noise-bar"></div></div>
+        </div>
+        <div id="msg-box"></div>
+    </div>
+
+    <script type="importmap">
+      { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+        // --- 1. v1.0 定義與狀態 ---
+        const STATE = { MENU: 'menu', TUTORIAL: 'tutorial', GAME: 'game', WIN: 'win', TRANSITION: 'trans', SUMMARY: 'summary' };
+        const AI_STATE = { HUNT: 'hunt', CHARGE: 'charge', DASH: 'dash', RECOVER: 'recover' };
+        const STEM_COLORS = [0xffffff, 0x0088ff, 0xcc00ff, 0xffffff];
+        const BPM = 128, BEAT_INT = 60 / BPM, GRID_SIZE = 6;
+        
+        const MONSTER_TYPES = {
+            hunter:  { name: "HUNTER",  color: 0xff0000, base: 1, end: 2, chargeFreq: 8,  dash: 3, alertBonus: 1, alertFreq: 4 },
+            stalker: { name: "STALKER", color: 0xaa00ff, base: 1, end: 2, chargeFreq: 10, dash: 2, alertBonus: 2, alertFreq: 8 },
+            rusher:  { name: "RUSHER",  color: 0xff5500, base: 1, end: 1, chargeFreq: 6,  dash: 4, alertBonus: 1, alertFreq: 3 }
+        };
+
+        const LEVELS = [
+            { w: 10, h: 10, time: 60, alertHigh: 80, alertLow: 50, mType: 'hunter',  envName: 'CALIBRATION SECTOR', fog: 0x051115, flash: 0x00ffff },
+            { w: 14, h: 14, time: 90, alertHigh: 70, alertLow: 40, mType: 'stalker', envName: 'LATENCY SECTOR',     fog: 0x110515, flash: 0xaa00ff },
+            { w: 18, h: 18, time: 120, alertHigh: 60, alertLow: 30, mType: 'rusher',  envName: 'COLLAPSE SECTOR',    fog: 0x220500, flash: 0xff3300 }
+        ];
+        
+        let currentStatus = STATE.MENU, monsterStatus = AI_STATE.HUNT;
+        let currentLevelIdx = 0, activeMonsterDef = MONSTER_TYPES.hunter;
+        let gameStats = { totalTime: 0, alerts: 0 };
+        
+        let isPaused = false, isTransitioning = false;
+        let suppressUnlockPause = false; // 程式解鎖旗標
+        
+        let stems = [], audioCtx = null, analyser = null, dataArray = null, audioLoadPromise = null;
+        let countdown = 60, notesCollected = 0, nextBeatTime = 0, beatCount = 0;
+        let aiTimer = 0, tutorialTimer = -1, victoryTimer = 0, screenShake = 0, msgTimer = null;
+        let playerNoise = 0, isAlertActive = false;
+
+        const stemFiles = ['0 Drums.mp3', '1 Bass.mp3', '2 Synth.mp3', '3 Other.mp3', 'EEEEERORR.mp3'];
+        const keys = {}, _oldPos = new THREE.Vector3(), _dir = new THREE.Vector3(), _renderPos = new THREE.Vector3();
+        const _playerBox = new THREE.Box3(), _wallBox = new THREE.Box3(), clock = new THREE.Clock();
+        const _targetColor = new THREE.Color();
+
+        let mazeGrid = [], mazeW = 15, mazeH = 15, particles = [];
+
+        const wallGeo = new THREE.BoxGeometry(GRID_SIZE, 6, GRID_SIZE);
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.9 });
+        const noteGeo = new THREE.OctahedronGeometry(0.8);
+        const partGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+
+        // --- 2. 空間與投影 ---
+        function getDistanceMap(grid, startX, startZ) {
+            const map = Array(grid.length).fill().map(() => Array(grid[0].length).fill(-1));
+            const queue = [[startX, startZ, 0]]; map[startZ][startX] = 0;
+            while(queue.length > 0) {
+                const [cx, cz, d] = queue.shift();
+                [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx, dz]) => {
+                    const nx = cx + dx, nz = cz + dz;
+                    if(nz >= 0 && nz < grid.length && nx >= 0 && nx < grid[0].length && grid[nz][nx] === 0 && map[nz][nx] === -1) {
+                        map[nz][nx] = d + 1; queue.push([nx, nz, d + 1]);
+                    }
+                });
+            }
+            return map;
+        }
+
+        function worldToCell(pos) {
+            return {
+                x: Math.max(0, Math.min(mazeW - 1, Math.floor((pos.x + mazeW * 3 + GRID_SIZE * 0.5) / GRID_SIZE))),
+                z: Math.max(0, Math.min(mazeH - 1, Math.floor((pos.z + mazeH * 3 + GRID_SIZE * 0.5) / GRID_SIZE)))
+            };
+        }
+
+        function seededRandom(s) {
+            return function() { let t = s += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+        }
+
+        // --- 3. 場景初始化 ---
+        const scene = new THREE.Scene(); 
+        scene.background = new THREE.Color(0x000000); scene.fog = new THREE.FogExp2(0x000000, 0.12);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new PointerLockControls(camera, document.body);
+        const flashLight = new THREE.PointLight(0xff0000, 0, 25); scene.add(flashLight); 
+        scene.add(new THREE.AmbientLight(0x050505));
+
+        const walls = [], noteCubes = [];
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x050505 }));
+        floor.rotation.x = -Math.PI / 2; scene.add(floor);
+
+        const monster = new THREE.Mesh(new THREE.BoxGeometry(1.5, 4, 1.5), new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0, wireframe: true })); scene.add(monster);
+        const chargeRing = new THREE.Mesh(new THREE.RingGeometry(2.5, 2.7, 32), new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0 }));
+        chargeRing.rotation.x = -Math.PI/2; scene.add(chargeRing);
+        const portal = new THREE.Mesh(new THREE.TorusGeometry(2, 0.2, 16, 100), new THREE.MeshBasicMaterial({ color: 0x00ffcc }));
+        portal.visible = false; scene.add(portal);
+
+        // --- 4. 系統與 UI 隔離邏輯 ---
+        function hideAllOverlays() {
+            document.getElementById('screen-menu').style.display = 'none';
+            document.getElementById('pause-overlay').style.display = 'none';
+            document.getElementById('transition-overlay').style.display = 'none';
+            document.getElementById('summary-overlay').style.display = 'none';
+        }
+
+        function clearTransientUI() {
+            const msg = document.getElementById('msg-box');
+            msg.style.display = 'none'; msg.innerText = '';
+            if (msgTimer) { clearTimeout(msgTimer); msgTimer = null; }
+        }
+
+        function showMsg(txt, dur = 3000) {
+            const el = document.getElementById('msg-box'); el.innerText = txt; el.style.display = 'block';
+            if (msgTimer) clearTimeout(msgTimer);
+            msgTimer = setTimeout(() => { if(el.innerText === txt) el.style.display = 'none'; msgTimer = null; }, dur);
+        }
+
+        // v1.0 程式性解鎖封裝
+        function programmaticUnlock() {
+            if (!controls.isLocked) return;
+            suppressUnlockPause = true;
+            controls.unlock();
+        }
+
+        function isAudioReady() { return audioCtx && stems.length === stemFiles.length; }
+
+        async function loadAudio() {
+            if (isAudioReady()) return true;
+            if (audioLoadPromise) return audioLoadPromise;
+            audioLoadPromise = (async () => {
+                try {
+                    const loadMsg = document.getElementById('load-msg'); loadMsg.innerText = "同步音訊緩衝區...";
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    stems = [];
+                    for (let f of stemFiles) {
+                        const res = await fetch(f); if (!res.ok) throw new Error(`Fetch Failed: ${f}`);
+                        const buffer = await audioCtx.decodeAudioData(await res.arrayBuffer());
+                        const gain = audioCtx.createGain(); gain.connect(audioCtx.destination);
+                        stems.push({ buffer, gain, source: null });
+                    }
+                    analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+                    stems[0].gain.connect(analyser); dataArray = new Uint8Array(32);
+                    loadMsg.style.display = 'none'; document.getElementById('btn-group').style.display = 'block';
+                    return true;
+                } catch (err) {
+                    document.getElementById('load-msg').innerText = `載入失敗: ${err.message}`;
+                    document.getElementById('load-msg').style.display = 'block';
+                    document.getElementById('btn-group').style.display = 'block';
+                    stems.forEach(s => { try { s.gain.disconnect(); } catch(e){} });
+                    stems = []; analyser = null; dataArray = null;
+                    if (audioCtx) { try { await audioCtx.close(); } catch(e){} audioCtx = null; }
+                    return false;
+                } finally { audioLoadPromise = null; }
+            })();
+            return audioLoadPromise;
+        }
+
+        function stopMusic() {
+            if (!audioCtx) return;
+            stems.forEach(s => { if (s.source) { try { s.source.stop(); } catch(e){} s.source.disconnect(); s.source = null; } s.gain.gain.value = 0; });
+        }
+
+        function spawnParticleBurst(pos, color, count = 25) {
+            for(let i=0; i<count; i++) {
+                const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true });
+                const p = new THREE.Mesh(partGeo, mat); p.position.copy(pos);
+                const vel = new THREE.Vector3((Math.random()-0.5)*0.3, Math.random()*0.3, (Math.random()-0.5)*0.3);
+                particles.push({ mesh: p, vel: vel, life: 1.0 }); scene.add(p);
+            }
+        }
+
+        function spawnRipple(pos) {
+            const rippleGeo = new THREE.RingGeometry(0.1, 0.2, 32);
+            const r = new THREE.Mesh(rippleGeo, new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 1, side: THREE.DoubleSide }));
+            r.position.copy(pos); r.position.y = 0.05; r.rotation.x = -Math.PI/2; scene.add(r);
+            particles.push({ mesh: r, life: 1.0, isRipple: true });
+        }
+
+        function updateParticles(dt) {
+            for(let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                if(p.isRipple) { p.life -= dt * 0.8; p.mesh.scale.addScalar(dt * 30); p.mesh.material.opacity = p.life; } 
+                else { p.mesh.position.add(p.vel); p.vel.y -= 0.4 * dt; p.life -= dt * 1.2; p.mesh.material.opacity = p.life; p.mesh.scale.setScalar(p.life); }
+                if(p.life <= 0) { 
+                    if(p.isRipple) p.mesh.geometry.dispose(); 
+                    p.mesh.material.dispose(); scene.remove(p.mesh); particles.splice(i, 1); 
+                }
+            }
+        }
+
+        function clearMaze() {
+            walls.forEach(w => scene.remove(w)); 
+            noteCubes.forEach(n => { n.material.dispose(); scene.remove(n); }); 
+            walls.length = 0; noteCubes.length = 0;
+        }
+
+        function resetSession(fullReset = false) {
+            clearTransientUI();
+            tutorialTimer = -1; victoryTimer = 0; notesCollected = 0; countdown = 60; beatCount = 0; 
+            aiTimer = 0; nextBeatTime = 0; monsterStatus = AI_STATE.HUNT; screenShake = 0;
+            playerNoise = 0; isAlertActive = false;
+            
+            if(fullReset) { gameStats = { totalTime: 0, alerts: 0 }; currentLevelIdx = 0; }
+            
+            for (const k in keys) keys[k] = false;
+            document.getElementById('timer').style.display = 'none'; document.getElementById('timer').innerText = "60.0";
+            document.getElementById('noise-ui').style.display = 'none';
+            document.getElementById('stage-indicator').style.display = 'none';
+            document.getElementById('s1').style.color = document.getElementById('s2').style.color = document.getElementById('s3').style.color = '#333';
+            monster.visible = false; monster.material.opacity = 0; portal.visible = false;
+            particles.forEach(p => { if(p.isRipple) p.mesh.geometry.dispose(); scene.remove(p.mesh); p.mesh.material.dispose(); }); particles = [];
+        }
+
+        async function startMusic() {
+            if (!isAudioReady()) return null;
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            const startAt = audioCtx.currentTime + 0.2;
+            stems.forEach((s, i) => {
+                s.source = audioCtx.createBufferSource(); s.source.buffer = s.buffer;
+                s.source.loop = true; s.source.connect(s.gain);
+                s.gain.gain.value = (i === 0) ? 1 : 0; s.source.start(startAt);
+            });
+            return startAt;
+        }
+
+        function spawnNote(id, x, z) {
+            const m = new THREE.Mesh(noteGeo, new THREE.MeshBasicMaterial({ color: STEM_COLORS[id] }));
+            m.position.set(x, 1.5, z); m.userData = { id, baseY: 1.5 }; scene.add(m); noteCubes.push(m);
+        }
+
+        // v1.0: 流程分流與狀態淨化
+        function handleLevelClear() {
+            const clearedState = currentStatus;
+            stopMusic(); setPaused(false); programmaticUnlock();
+            
+            document.getElementById('game-hud').style.display = 'none';
+            document.getElementById('noise-ui').style.display = 'none';
+            document.getElementById('stage-indicator').style.display = 'none';
+            hideAllOverlays();
+            clearTransientUI();
+            
+            if (clearedState === STATE.TUTORIAL) {
+                currentStatus = STATE.MENU;
+                document.getElementById('screen-menu').style.display = 'flex';
+                document.getElementById('title-text').innerText = "教學協議完成";
+                document.getElementById('btn-group').style.display = 'block';
+                return;
+            }
+
+            if (currentLevelIdx >= LEVELS.length - 1) {
+                currentStatus = STATE.SUMMARY;
+                document.getElementById('summary-overlay').style.display = 'flex';
+                document.getElementById('final-stats').innerHTML = `總耗時: ${Math.floor(gameStats.totalTime)}s<br>觸發警報: ${gameStats.alerts} 次<br>任務狀態: 完美生還`;
+            } else {
+                currentStatus = STATE.TRANSITION;
+                const nextLvl = LEVELS[currentLevelIdx + 1];
+                document.getElementById('transition-overlay').style.display = 'flex';
+                document.getElementById('trans-title').innerText = `SECTOR ${currentLevelIdx + 1} CLEARED`;
+                document.getElementById('trans-stats').innerHTML = `解鎖下一區域: <span style="color:#00ffcc">${nextLvl.envName}</span><br>準備深潛...`;
+                currentLevelIdx++;
+            }
+        }
+
+        function endGame(win) {
+            clearTransientUI();
+            if (win) {
+                stopMusic(); // 勝利瞬間即停音樂
+                currentStatus = STATE.WIN; victoryTimer = 1.5;
+                spawnParticleBurst(camera.position, 0x00ffcc, 60); showMsg("區域淨化：數據已收束");
+            } else {
+                stopMusic(); currentStatus = STATE.MENU; setPaused(false); programmaticUnlock();
+                
+                document.getElementById('game-hud').style.display = 'none';
+                document.getElementById('noise-ui').style.display = 'none';
+                document.getElementById('stage-indicator').style.display = 'none';
+                hideAllOverlays();
+
+                document.getElementById('screen-menu').style.display = 'flex';
+                document.getElementById('title-text').innerText = "系統崩潰：被追蹤者抹除";
+                document.getElementById('btn-group').style.display = 'block';
+            }
+        }
+
+        async function enterState(state, isFullReset = false) {
+            if (isTransitioning) return; isTransitioning = true;
+            try {
+                const ready = await loadAudio(); if (!ready) { showMsg("音訊尚未就緒，無法開始"); return; }
+                currentStatus = state; setPaused(false); stopMusic(); 
+                resetSession(isFullReset);
+                
+                hideAllOverlays();
+                document.getElementById('game-hud').style.display = 'block';
+                
+                let curLvl = { w: 10, h: 10, time: 60, mType: 'hunter', envName: 'TUTORIAL', fog: 0x051115, flash: 0x00ffff }; 
+                if (state === STATE.GAME) {
+                    curLvl = LEVELS[currentLevelIdx];
+                    activeMonsterDef = MONSTER_TYPES[curLvl.mType];
+                    
+                    document.getElementById('env-name').innerText = curLvl.envName;
+                    const tc = document.getElementById('threat-class');
+                    tc.innerText = `THREAT: ${activeMonsterDef.name}`; tc.style.color = '#' + activeMonsterDef.color.toString(16).padStart(6, '0');
+
+                    document.getElementById('stage-indicator').style.display = 'block';
+                    document.getElementById('noise-ui').style.display = 'block';
+                } else { activeMonsterDef = MONSTER_TYPES.hunter; }
+                
+                scene.fog.color.setHex(curLvl.fog); scene.background.copy(scene.fog.color);
+                flashLight.color.setHex(curLvl.flash); monster.material.color.setHex(activeMonsterDef.color); chargeRing.material.color.setHex(activeMonsterDef.color);
+
+                mazeW = curLvl.w; mazeH = curLvl.h; countdown = curLvl.time;
+                clearMaze();
+
+                const seed = state === STATE.TUTORIAL ? 101 : Math.floor(Math.random() * 99999); const r = seededRandom(seed);
+                mazeGrid = (function(w,h,rnd){const g=Array(h).fill().map(()=>Array(w).fill(1));function walk(x,y){g[y][x]=0;[[0,2],[0,-2],[2,0],[-2,0]].sort(()=>rnd()-0.5).forEach(([dx,dy])=>{let nx=x+dx,ny=y+dy;if(nx>0&&nx<w-1&&ny>0&&ny<h-1&&g[ny][nx]===1){g[y+dy/2][x+dx/2]=0;walk(nx,ny);}});};walk(1,1);return g;})(mazeW,mazeH,r);
+
+                const distMap = getDistanceMap(mazeGrid, 1, 1);
+                const openCells = []; mazeGrid.forEach((row, z) => row.forEach((cell, x) => { if(cell === 0 && !(x===1 && z===1)) openCells.push({ x, z, d: distMap[z][x] }); }));
+                openCells.sort((a, b) => a.d - b.d);
+                mazeGrid.forEach((row,z)=>row.forEach((cell,x)=>{if(cell===1){const w=new THREE.Mesh(wallGeo,wallMat);w.position.set(x*GRID_SIZE-(mazeW*3),3,z*GRID_SIZE-(mazeH*3));scene.add(w);walls.push(w);}}));
+
+                const portalCell = openCells[openCells.length - 1]; const monsterCell = openCells[openCells.length - 2];
+                portal.position.set(portalCell.x*GRID_SIZE-(mazeW*3),2,portalCell.z*GRID_SIZE-(mazeH*3));
+
+                if (state === STATE.TUTORIAL) {
+                    const tNote = openCells[Math.floor(openCells.length*0.3)]; spawnNote(1, tNote.x*GRID_SIZE-(mazeW*3), tNote.z*GRID_SIZE-(mazeH*3));
+                } else {
+                    const notePool = openCells.filter(c => c !== portalCell && c !== monsterCell);
+                    [0.3, 0.6, 0.8].forEach((p, i) => { const c = notePool[Math.floor(notePool.length * p)]; spawnNote(i + 1, c.x * GRID_SIZE - (mazeW * 3), c.z * GRID_SIZE - (mazeH * 3)); });
+                    monster.position.set(monsterCell.x*GRID_SIZE-(mazeW*3), 2.5, monsterCell.z*GRID_SIZE-(mazeH*3));
+                    monster.visible = true; document.getElementById('timer').style.display = 'block';
+                }
+                controls.lock(); camera.position.set(-(mazeW*3)+GRID_SIZE,1.6,-(mazeH*3)+GRID_SIZE);
+                
+                const musicStartTime = await startMusic();
+                if (musicStartTime === null) { showMsg("啟動失敗"); endGame(false); return; }
+                nextBeatTime = musicStartTime + BEAT_INT;
+            } finally { isTransitioning = false; }
+        }
+
+        // --- 5. 聽覺追蹤 AI ---
+        function handleBeat() {
+            if (currentStatus !== STATE.GAME) return;
+            const pCell = worldToCell(camera.position), mCell = worldToCell(monster.position);
+            const chaseMap = getDistanceMap(mazeGrid, pCell.x, pCell.z);
+            
+            if (monsterStatus === AI_STATE.HUNT) {
+                let curX = mCell.x, curZ = mCell.z;
+                const baseSteps = notesCollected === 3 ? activeMonsterDef.end : activeMonsterDef.base;
+                const huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0); 
+
+                for (let s = 0; s < huntSteps; s++) {
+                    let best = { x: curX, z: curZ, d: chaseMap[curZ]?.[curX] ?? Infinity };
+                    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dz]) => {
+                        const d = chaseMap[curZ+dz]?.[curX+dx];
+                        if (d !== undefined && d !== -1 && d < best.d) best = { x: curX+dx, z: curZ+dz, d };
+                    });
+                    curX = best.x; curZ = best.z;
+                }
+                monster.position.x = curX*GRID_SIZE-(mazeW*3); monster.position.z = curZ*GRID_SIZE-(mazeH*3);
+                
+                const chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq; 
+                if (beatCount % chargeFreq === 0) { 
+                    monsterStatus = AI_STATE.CHARGE; aiTimer = 0; screenShake = isAlertActive ? 0.6 : 0.4; 
+                    showMsg(isAlertActive ? "狂暴：無視距離鎖定中" : "警告：偵測到相位蓄力", 800); 
+                }
+            } else if (monsterStatus === AI_STATE.DASH) {
+                let curX = mCell.x, curZ = mCell.z;
+                for(let s=0; s < activeMonsterDef.dash; s++) {
+                    let ds = { x: curX, z: curZ, d: chaseMap[curZ]?.[curX] ?? Infinity };
+                    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dz]) => {
+                        const d = chaseMap[curZ+dz]?.[curX+dx];
+                        if (d !== undefined && d !== -1 && d < ds.d) ds = { x: curX+dx, z: curZ+dz, d };
+                    });
+                    curX = ds.x; curZ = ds.z;
+                }
+                monster.position.x = curX*GRID_SIZE-(mazeW*3); monster.position.z = curZ*GRID_SIZE-(mazeH*3);
+                monsterStatus = AI_STATE.RECOVER;
+            } else if (monsterStatus === AI_STATE.RECOVER) { monsterStatus = AI_STATE.HUNT; }
+        }
+
+        // --- 6. 主循環 ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05), now = audioCtx ? audioCtx.currentTime : 0;
+            updateParticles(dt);
+
+            if (currentStatus === STATE.WIN) {
+                victoryTimer -= dt; if(victoryTimer <= 0) handleLevelClear();
+                renderer.render(scene, camera); return;
+            }
+
+            if (currentStatus !== STATE.GAME && currentStatus !== STATE.TUTORIAL) {
+                if(isPaused) renderer.render(scene, camera); return;
+            }
+            if (isPaused) { renderer.render(scene, camera); return; }
+            
+            if (controls.isLocked) {
+                _oldPos.copy(camera.position); 
+                const moveSpeed = (keys['shift'] ? 10 : 6) * dt;
+                
+                if (keys['w']) controls.moveForward(moveSpeed);
+                if (keys['s']) controls.moveForward(-moveSpeed);
+                if (keys['a']) controls.moveRight(-5*dt);
+                if (keys['d']) controls.moveRight(5*dt);
+                
+                _playerBox.setFromCenterAndSize(camera.position, new THREE.Vector3(1.5, 3, 1.5));
+                for (let w of walls) { _wallBox.setFromObject(w); if (_playerBox.intersectsBox(_wallBox)) { camera.position.copy(_oldPos); break; } }
+
+                if (currentStatus === STATE.GAME) {
+                    gameStats.totalTime += dt;
+                    const curLvl = LEVELS[currentLevelIdx];
+                    const distMoved = _oldPos.distanceTo(camera.position);
+                    
+                    if (distMoved > 0.001) { playerNoise = Math.min(100, playerNoise + (keys['shift'] ? 70 : 25) * dt); } 
+                    else { playerNoise = Math.max(0, playerNoise - 45 * dt); }
+
+                    if (playerNoise >= curLvl.alertHigh && !isAlertActive) {
+                        isAlertActive = true; gameStats.alerts++; showMsg("噪音超載：追蹤者進入狂暴狀態！", 1500);
+                    } else if (playerNoise <= curLvl.alertLow && isAlertActive) {
+                        isAlertActive = false; showMsg("威脅降低：脫離高危聽覺區", 1500);
+                    }
+
+                    const noiseBar = document.getElementById('noise-bar'); const noiseText = document.getElementById('noise-text');
+                    noiseBar.style.width = playerNoise + '%';
+                    if (isAlertActive) { noiseBar.style.background = '#f00'; noiseText.innerText = `[ ALERT : THRESHOLD ${curLvl.alertHigh} ]`; noiseText.style.color = '#f00'; } 
+                    else { noiseBar.style.background = '#fff'; noiseText.innerText = '[ NOISE LEVEL ]'; noiseText.style.color = '#aaa'; }
+
+                    const targetFogHex = (isAlertActive || monsterStatus === AI_STATE.CHARGE) ? activeMonsterDef.color : curLvl.fog;
+                    _targetColor.setHex(targetFogHex); scene.fog.color.lerp(_targetColor, dt * 2); scene.background.copy(scene.fog.color);
+                }
+
+                if (nextBeatTime > 0) { while (now >= nextBeatTime) { beatCount++; handleBeat(); nextBeatTime += BEAT_INT; } }
+                if (analyser && dataArray) {
+                    analyser.getByteFrequencyData(dataArray); const kick = (dataArray[1]+dataArray[2])/510;
+                    flashLight.intensity = Math.pow(kick, 5) * 18; flashLight.position.copy(camera.position);
+                    if (monster.visible) monster.material.opacity = (monsterStatus === AI_STATE.CHARGE || kick > 0.6) ? 1 : 0;
+                }
+                if (monsterStatus === AI_STATE.CHARGE) {
+                    chargeRing.visible = true; chargeRing.position.copy(monster.position); chargeRing.position.y = 0.1;
+                    const ringScale = isAlertActive ? 3 : 2; 
+                    chargeRing.scale.setScalar(1 + aiTimer * ringScale); chargeRing.material.opacity = 1 - aiTimer;
+                } else { chargeRing.visible = false; }
+
+                for (let i = noteCubes.length - 1; i >= 0; i--) {
+                    const n = noteCubes[i]; n.rotation.y += dt*3; n.position.y = n.userData.baseY + Math.sin(now*4)*0.2;
+                    if (camera.position.distanceTo(n.position) < 2.5) {
+                        const stem = stems[n.userData.id]; if (stem?.gain) stem.gain.gain.setTargetAtTime(1, now, 0.5);
+                        document.getElementById('s'+n.userData.id).style.color = '#fff';
+                        spawnParticleBurst(n.position, STEM_COLORS[n.userData.id], 30);
+                        n.material.dispose(); scene.remove(n); noteCubes.splice(i, 1); notesCollected++;
+                        if (notesCollected === 3) { portal.visible = true; showMsg("撤離門已同步"); spawnRipple(portal.position); }
+                    }
+                }
+                if (currentStatus === STATE.TUTORIAL && notesCollected >= 1) { if (tutorialTimer < 0) { tutorialTimer = 1.5; showMsg("教學完成"); } tutorialTimer -= dt; if (tutorialTimer <= 0) handleLevelClear(); }
+                if (currentStatus === STATE.GAME) {
+                    countdown -= dt; document.getElementById('timer').innerText = countdown.toFixed(1);
+                    if (monsterStatus === AI_STATE.CHARGE) { aiTimer += dt; if (aiTimer > 0.8) monsterStatus = AI_STATE.DASH; }
+                    if (camera.position.distanceTo(monster.position) < 2.0 || countdown <= 0) endGame(false);
+                    if (notesCollected === 3 && camera.position.distanceTo(portal.position) < 3.5) endGame(true);
+                }
+                _renderPos.copy(camera.position);
+                if (screenShake > 0) { camera.position.x += (Math.random()-0.5)*screenShake; camera.position.y += (Math.random()-0.5)*screenShake*0.5; screenShake = Math.max(0, screenShake - dt*2); }
+                renderer.render(scene, camera); camera.position.copy(_renderPos);
+            } else { renderer.render(scene, camera); }
+        }
+
+        // --- 7. 事件與防呆鎖定 ---
+        function setPaused(p) { isPaused = p; document.getElementById('pause-overlay').style.display = p ? 'flex' : 'none'; }
+        
+        controls.addEventListener('unlock', async () => { 
+            if (suppressUnlockPause) { suppressUnlockPause = false; return; } 
+            if ((currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL) && !document.hidden && !isPaused) { 
+                setPaused(true); if (audioCtx?.state === 'running') await audioCtx.suspend(); showMsg("已暫停"); 
+            } 
+        });
+        controls.addEventListener('lock', async () => { 
+            if (isPaused) { if (audioCtx?.state === 'suspended') await audioCtx.resume(); clock.getDelta(); setPaused(false); } 
+        });
+        document.addEventListener("visibilitychange", async () => { 
+            if (document.hidden) { 
+                if (currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL) setPaused(true); 
+                if (audioCtx?.state === 'running') await audioCtx.suspend(); 
+                if (controls.isLocked) { programmaticUnlock(); }
+            } 
+        });
+
+        window.onkeydown = e => keys[e.key.toLowerCase()] = true; window.onkeyup = e => keys[e.key.toLowerCase()] = false;
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+        
+        document.getElementById('btn-tutorial').onclick = () => enterState(STATE.TUTORIAL, true);
+        document.getElementById('btn-start').onclick = () => enterState(STATE.GAME, true);
+        document.getElementById('btn-resume').onclick = () => { if (isPaused) controls.lock(); };
+        document.getElementById('btn-next-stage').onclick = () => enterState(STATE.GAME, false);
+        
+        // v1.0: 絕對純淨的主選單重置
+        document.getElementById('btn-return-menu').onclick = () => { 
+            hideAllOverlays(); clearTransientUI(); currentStatus = STATE.MENU; currentLevelIdx = 0; gameStats = { totalTime: 0, alerts: 0 };
+            clearMaze(); portal.visible = false; monster.visible = false; 
+            scene.fog.color.setHex(0x000000); scene.background.copy(scene.fog.color); // 拉回黑場
+            document.getElementById('screen-menu').style.display = 'flex'; document.getElementById('title-text').innerText = "WSIDO XRTP ECHO: SOUND CELL"; 
+        };
+        
+        loadAudio(); animate();
+    </script>
+</body>
+</html>
