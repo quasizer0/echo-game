@@ -1700,6 +1700,10 @@
             elStageIndicator.style.display = 'none';
             elStatusBox.style.display = 'none';
             elCrosshair.style.display = 'none';
+            elBeatRing.style.display = 'none';
+            elBeatRing.style.opacity = '0';
+            elBeatRing.style.transform = 'translate(-50%,-50%) scale(1)';
+            elTimingJudge.style.display = 'none';
             elEdgeWarning.style.opacity = '0';
 
             elNoiseBar.style.width = '0%';
@@ -1741,6 +1745,10 @@
             elStageIndicator.style.display = 'none';
             elStatusBox.style.display = 'none';
             elCrosshair.style.display = 'none';
+            elBeatRing.style.display = 'none';
+            elBeatRing.style.opacity = '0';
+            elBeatRing.style.transform = 'translate(-50%,-50%) scale(1)';
+            elTimingJudge.style.display = 'none';
             hideAllOverlays();
             clearTransientUI();
 
@@ -2184,7 +2192,8 @@
                     }
                 }
 
-                if(beatAssistEnabled && audioCtx && musicStartAbsTime > 0){
+                const canShowBeatRing = beatAssistEnabled && audioCtx && musicStartAbsTime > 0 && (currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL);
+                if(canShowBeatRing){
                     const nearestAssist = getNearestAssistBeat(now);
                     const beatDelta = Math.abs(now - nearestAssist.time);
                     const beatPulse = clamp(1 - beatDelta / (BEAT_INT * 0.55), 0, 1);
