@@ -405,16 +405,22 @@
 
         const GRID_SIZE = 6;
         const WALL_VISUAL_SIZE = 5.2;
-        const WALL_COLLIDER_HALF = WALL_VISUAL_SIZE * 0.5;
+        const WALL_COLLIDER_HALF = WALL_VISUAL_SIZE * 0.5 - 0.08;
+        const WALL_CORNER_RADIUS = 0.92;
         const PLAYER_RADIUS = 0.82;
         const COLLISION_EPS = 0.035;
-        const PLAYER_PUSH_ITERS = 3;
+        const PLAYER_PUSH_ITERS = 4;
+        const KITE_TRAIL_LENGTH = 9;
+        const KITE_REPEAT_TRIGGER = 2;
+        const KITE_LOCK_BEATS = 8;
+        const KITE_LOOKAHEAD = 3;
 
         const STEM_COLORS = {
             1:0x00aaff,  // bass
             2:0xcc55ff,  // synth
             3:0xffffff   // texture
         };
+        const STEM_UNLOCK_ORDER = ['BASS', 'SYNTH', 'TEXTURE'];
 
         const stemFiles = [
             '0 Drums.mp3',
@@ -482,7 +488,7 @@
                 alertHigh:56,
                 alertLow:26,
                 rooms:2,
-                loops:12,
+                loops:8,
                 grace:3.5
             },
             {
@@ -495,7 +501,7 @@
                 alertHigh:48,
                 alertLow:22,
                 rooms:3,
-                loops:18,
+                loops:12,
                 grace:3.0
             },
             {
@@ -508,7 +514,7 @@
                 alertHigh:42,
                 alertLow:18,
                 rooms:4,
-                loops:26,
+                loops:16,
                 grace:2.5
             }
         ];
@@ -534,6 +540,7 @@
         let countdown = 0; // no timeout now, kept unused intentionally
         let notesCollected = 0;
         let currentCollectedIds = new Set();
+        let unlockedStemLevel = 0;
 
         let nextBeatTime = 0;
         let beatCount = 0;
@@ -556,6 +563,9 @@
         let timingJudgeTimer = 0;
         let lastMoveJudgeBeatId = -999;
         let wasTryingToMoveLastFrame = false;
+        let playerBeatTrail = [];
+        let kitePressure = 0;
+        let cutOffBeats = 0;
 
         let mazeGrid = [];
         let mazeW = 17;
@@ -960,17 +970,48 @@
         // =========================
         // 7) Collision / movement
         // =========================
-        function circleIntersectsWall(px, pz, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
-            const minX = wx - WALL_COLLIDER_HALF;
-            const maxX = wx + WALL_COLLIDER_HALF;
-            const minZ = wz - WALL_COLLIDER_HALF;
-            const maxZ = wz + WALL_COLLIDER_HALF;
+        function roundedWallSDF(px, pz, wx, wz, radiusInflate = PLAYER_RADIUS + COLLISION_EPS){
+            const half = WALL_COLLIDER_HALF + radiusInflate;
+            const corner = WALL_CORNER_RADIUS + radiusInflate;
+            const innerHalf = Math.max(half - corner, 0.001);
 
-            const nearestX = clamp(px, minX, maxX);
-            const nearestZ = clamp(pz, minZ, maxZ);
-            const dx = px - nearestX;
-            const dz = pz - nearestZ;
-            return (dx * dx + dz * dz) < (radius * radius);
+            const qx = Math.abs(px - wx) - innerHalf;
+            const qz = Math.abs(pz - wz) - innerHalf;
+            const ox = Math.max(qx, 0);
+            const oz = Math.max(qz, 0);
+            return Math.hypot(ox, oz) + Math.min(Math.max(qx, qz), 0) - corner;
+        }
+
+        function getRoundedWallNormal(px, pz, wx, wz, radiusInflate = PLAYER_RADIUS + COLLISION_EPS){
+            const e = 0.002;
+            const gx = roundedWallSDF(px + e, pz, wx, wz, radiusInflate) - roundedWallSDF(px - e, pz, wx, wz, radiusInflate);
+            const gz = roundedWallSDF(px, pz + e, wx, wz, radiusInflate) - roundedWallSDF(px, pz - e, wx, wz, radiusInflate);
+            const len = Math.hypot(gx, gz);
+            if(len > 1e-6){
+                return { x: gx / len, z: gz / len };
+            }
+
+            const offX = px - wx;
+            const offZ = pz - wz;
+            if(Math.abs(offX) >= Math.abs(offZ)){
+                return { x: offX >= 0 ? 1 : -1, z: 0 };
+            }
+            return { x: 0, z: offZ >= 0 ? 1 : -1 };
+        }
+
+        function circleIntersectsWall(px, pz, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
+            return roundedWallSDF(px, pz, wx, wz, radius) < 0;
+        }
+
+        function pushOutFromRoundedWall(pos, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
+            const sdf = roundedWallSDF(pos.x, pos.z, wx, wz, radius);
+            if(sdf >= 0) return false;
+
+            const normal = getRoundedWallNormal(pos.x, pos.z, wx, wz, radius);
+            const push = -sdf + 0.003;
+            pos.x += normal.x * push;
+            pos.z += normal.z * push;
+            return true;
         }
 
         function resolvePlayerCollision(pos){
@@ -985,38 +1026,9 @@
 
                         const wx = worldX(x);
                         const wz = worldZ(z);
-                        const minX = wx - WALL_COLLIDER_HALF;
-                        const maxX = wx + WALL_COLLIDER_HALF;
-                        const minZ = wz - WALL_COLLIDER_HALF;
-                        const maxZ = wz + WALL_COLLIDER_HALF;
-
-                        const nearestX = clamp(pos.x, minX, maxX);
-                        const nearestZ = clamp(pos.z, minZ, maxZ);
-                        let dx = pos.x - nearestX;
-                        let dz = pos.z - nearestZ;
-                        let distSq = dx * dx + dz * dz;
-                        const radius = PLAYER_RADIUS + COLLISION_EPS;
-
-                        if(distSq >= radius * radius) continue;
-
-                        if(distSq < 1e-8){
-                            const offX = pos.x - wx;
-                            const offZ = pos.z - wz;
-                            if(Math.abs(offX) >= Math.abs(offZ)){
-                                dx = offX >= 0 ? 1 : -1;
-                                dz = 0;
-                            }else{
-                                dx = 0;
-                                dz = offZ >= 0 ? 1 : -1;
-                            }
-                            distSq = 1;
+                        if(pushOutFromRoundedWall(pos, wx, wz)){
+                            pushed = true;
                         }
-
-                        const dist = Math.sqrt(distSq);
-                        const overlap = radius - dist;
-                        pos.x += (dx / dist) * (overlap + 0.001);
-                        pos.z += (dz / dist) * (overlap + 0.001);
-                        pushed = true;
                     }
                 }
 
@@ -1090,11 +1102,17 @@
             if(move.lengthSq() > 0){
                 move.normalize().multiplyScalar(finalSpeed * dt);
 
-                camera.position.x += move.x;
-                resolvePlayerCollision(camera.position);
+                const subSteps = Math.max(1, Math.ceil(move.length() / 0.34));
+                const stepX = move.x / subSteps;
+                const stepZ = move.z / subSteps;
 
-                camera.position.z += move.z;
-                resolvePlayerCollision(camera.position);
+                for(let i = 0; i < subSteps; i++){
+                    camera.position.x += stepX;
+                    resolvePlayerCollision(camera.position);
+
+                    camera.position.z += stepZ;
+                    resolvePlayerCollision(camera.position);
+                }
             }
 
             wasTryingToMoveLastFrame = isTryingToMove;
@@ -1279,9 +1297,9 @@
             const duck = lerp(1.0, 0.78, danger);
 
             stems[0].gain.gain.setTargetAtTime(0.72 * duck, now, 0.08);
-            stems[1].gain.gain.setTargetAtTime(currentCollectedIds.has(1) ? 0.42 * duck : 0.0, now, 0.12);
-            stems[2].gain.gain.setTargetAtTime(currentCollectedIds.has(2) ? 0.38 * duck : 0.0, now, 0.12);
-            stems[3].gain.gain.setTargetAtTime(currentCollectedIds.has(3) ? 0.34 * duck : 0.0, now, 0.12);
+            stems[1].gain.gain.setTargetAtTime(unlockedStemLevel >= 1 ? 0.42 * duck : 0.0, now, 0.12);
+            stems[2].gain.gain.setTargetAtTime(unlockedStemLevel >= 2 ? 0.38 * duck : 0.0, now, 0.12);
+            stems[3].gain.gain.setTargetAtTime(unlockedStemLevel >= 3 ? 0.34 * duck : 0.0, now, 0.12);
 
             if(threatGain){
                 const dist = camera.position.distanceTo(monster.position);
@@ -1398,18 +1416,89 @@
             }
         }
 
+        function updateStemHUD(){
+            const stemState = [
+                [elS1, unlockedStemLevel >= 1],
+                [elS2, unlockedStemLevel >= 2],
+                [elS3, unlockedStemLevel >= 3]
+            ];
+            for(const [el, on] of stemState){
+                el.textContent = on ? 'ON' : 'LOCKED';
+                el.style.color = on ? '#fff' : '#555';
+            }
+        }
+
         function updateObjectiveUI(){
             if(notesCollected < 3){
                 elObjective.textContent = `COLLECT ${3 - notesCollected} MORE`;
                 elStatusMain.textContent = `FRAGMENTS ${notesCollected} / 3`;
                 elStatusSub.textContent = beatAssistEnabled
-                    ? '青色 [ON BEAT] = 更快 + 更安靜，不是無敵。'
-                    : '這一層沒有節拍提示，請靠聲音和地形活下來。';
+                    ? '本關碎片只開門；完成撤離後，下一區域才會增加音軌。'
+                    : '這一層沒有節拍提示；而且音軌要到下一區域才會增加。';
             }else{
                 elObjective.textContent = `PORTAL OPEN — FIND CYAN GATE`;
                 elStatusMain.textContent = `EXIT READY`;
                 elStatusSub.textContent = '看見青色門光就直接撤離。';
             }
+        }
+
+        function getCellKey(cell){
+            return `${cell.x},${cell.z}`;
+        }
+
+        function isWalkableCell(x, z){
+            return z >= 0 && z < mazeH && x >= 0 && x < mazeW && mazeGrid[z][x] === 0;
+        }
+
+        function trackPlayerRoute(cell){
+            const key = getCellKey(cell);
+            const repeatCount = playerBeatTrail.filter(k => k === key).length;
+            playerBeatTrail.push(key);
+            if(playerBeatTrail.length > KITE_TRAIL_LENGTH) playerBeatTrail.shift();
+
+            if(repeatCount + 1 >= KITE_REPEAT_TRIGGER){
+                const wasOff = cutOffBeats <= 0;
+                kitePressure = clamp(kitePressure + 1, 0, 3);
+                cutOffBeats = Math.max(cutOffBeats, KITE_LOCK_BEATS);
+                if(wasOff){
+                    showMsg('路徑被讀取：牠開始切前方', 1000);
+                }
+            }else{
+                kitePressure = Math.max(0, kitePressure - 0.25);
+                cutOffBeats = Math.max(0, cutOffBeats - 1);
+            }
+        }
+
+        function getCutOffTargetCell(pCell){
+            if(playerBeatTrail.length < 2) return pCell;
+
+            let prev = null;
+            for(let i = playerBeatTrail.length - 2; i >= 0; i--){
+                const [x, z] = playerBeatTrail[i].split(',').map(Number);
+                if(x !== pCell.x || z !== pCell.z){
+                    prev = { x, z };
+                    break;
+                }
+            }
+            if(!prev) return pCell;
+
+            let dx = Math.sign(pCell.x - prev.x);
+            let dz = Math.sign(pCell.z - prev.z);
+            if(dx !== 0 && dz !== 0){
+                if(Math.abs(pCell.x - prev.x) >= Math.abs(pCell.z - prev.z)) dz = 0;
+                else dx = 0;
+            }
+            if(dx === 0 && dz === 0) return pCell;
+
+            const lookAhead = KITE_LOOKAHEAD + Math.min(kitePressure, 2);
+            let target = { x:pCell.x, z:pCell.z };
+            for(let s = 0; s < lookAhead; s++){
+                const nx = target.x + dx;
+                const nz = target.z + dz;
+                if(!isWalkableCell(nx, nz)) break;
+                target = { x:nx, z:nz };
+            }
+            return target;
         }
 
         function resetSession(fullReset = false){
@@ -1436,9 +1525,13 @@
             isAlertActive = false;
             timingJudgeTimer = 0;
             monsterStatus = AI_STATE.HUNT;
+            playerBeatTrail = [];
+            kitePressure = 0;
+            cutOffBeats = 0;
 
             if(fullReset){
                 currentLevelIdx = 0;
+                unlockedStemLevel = 0;
                 gameStats = { totalTime:0, alerts:0, deaths:0 };
             }
 
@@ -1456,9 +1549,7 @@
             elNoiseText.textContent = '[ NOISE LEVEL ]';
             elNoiseText.style.color = '#aaa';
 
-            elS1.style.color = '#333';
-            elS2.style.color = '#333';
-            elS3.style.color = '#333';
+            updateStemHUD();
 
             monster.visible = false;
             monster.material.opacity = 0;
@@ -1514,13 +1605,16 @@
                     `總死亡：${gameStats.deaths} 次<br>` +
                     `任務狀態：完整撤離`;
             }else{
-                currentStatus = STATE.TRANSITION;
                 const nextLvl = LEVELS[currentLevelIdx + 1];
+                const nextStemName = STEM_UNLOCK_ORDER[Math.min(unlockedStemLevel, STEM_UNLOCK_ORDER.length - 1)];
+                unlockedStemLevel = Math.min(unlockedStemLevel + 1, 3);
+                currentStatus = STATE.TRANSITION;
                 resetMenuScene();
                 elTransition.style.display = 'flex';
                 elTransTitle.textContent = `SECTOR ${currentLevelIdx + 1} CLEAR`;
                 elTransStats.innerHTML =
                     `解鎖下一區域：<span style="color:#00ffcc">${nextLvl.envName}</span><br>` +
+                    `新增音軌：<span style="color:#00ffcc">${nextStemName}</span><br>` +
                     `提示輔助：${nextLvl.beatAssist ? 'ON' : 'OFF'}<br>` +
                     `準備深潛…`;
                 currentLevelIdx++;
@@ -1589,8 +1683,10 @@
                     fog:0x07161c,
                     flash:0x00ffff,
                     beatAssist:true,
+                    alertHigh:56,
+                    alertLow:26,
                     rooms:2,
-                    loops:10,
+                    loops:6,
                     grace:4.0
                 };
 
@@ -1735,7 +1831,9 @@
             if(graceTimer > 0) return;
 
             const pCell = worldToCell(camera.position);
-            const chaseMap = getDistanceMap(mazeGrid, pCell.x, pCell.z);
+            trackPlayerRoute(pCell);
+            const targetCell = cutOffBeats > 0 ? getCutOffTargetCell(pCell) : pCell;
+            const chaseMap = getDistanceMap(mazeGrid, targetCell.x, targetCell.z);
 
             const isAssistBeat = ((beatCount + ASSIST_PHASE) % ASSIST_EVERY_N_BEATS) === 0;
 
@@ -1747,20 +1845,22 @@
                 const shouldMove = beatCount % (isAlertActive ? activeMonsterDef.alertMoveEvery : activeMonsterDef.moveEvery) === 0;
                 if(shouldMove){
                     const baseSteps = notesCollected === 3 ? activeMonsterDef.end : activeMonsterDef.base;
-                    const huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0);
+                    let huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0);
+                    if(cutOffBeats > 0) huntSteps += 1;
                     moveMonsterOneChaseBurst(chaseMap, huntSteps);
                 }
 
-                const chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
+                let chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
+                if(cutOffBeats > 0) chargeFreq = Math.max(4, chargeFreq - 2);
                 if(beatCount % chargeFreq === 0){
                     monsterStatus = AI_STATE.CHARGE;
                     aiTimer = 0;
                     screenShake = isAlertActive ? 0.55 : 0.34;
-                    showMsg(isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動', 800);
+                    showMsg(cutOffBeats > 0 ? '路徑封鎖：牠在切你前方' : (isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動'), 800);
                 }
             }
             else if(monsterStatus === AI_STATE.DASH){
-                moveMonsterOneChaseBurst(chaseMap, activeMonsterDef.dash);
+                moveMonsterOneChaseBurst(chaseMap, activeMonsterDef.dash + (cutOffBeats > 0 ? 1 : 0));
                 monsterStatus = AI_STATE.RECOVER;
             }
             else if(monsterStatus === AI_STATE.RECOVER){
@@ -1882,8 +1982,11 @@
                         elStatusMain.textContent = 'DANGER : DASH';
                         elStatusSub.textContent = '這時別硬衝直線，優先切角。';
                     }else if(isAlertActive){
-                        elStatusMain.textContent = 'ALERT ACTIVE';
-                        elStatusSub.textContent = '噪音太高。停、繞、等下一個節拍。';
+                        elStatusMain.textContent = cutOffBeats > 0 ? 'ALERT + CUT OFF' : 'ALERT ACTIVE';
+                        elStatusSub.textContent = cutOffBeats > 0 ? '牠正在讀你的繞圈路線，別再走同一條。' : '噪音太高。停、繞、等下一個節拍。';
+                    }else if(cutOffBeats > 0){
+                        elStatusMain.textContent = 'CUT OFF ACTIVE';
+                        elStatusSub.textContent = '你重複繞圈太久了，牠正在切前方。';
                     }else{
                         updateObjectiveUI();
                     }
@@ -1979,10 +2082,6 @@
                         currentCollectedIds.add(id);
                         notesCollected = currentCollectedIds.size;
 
-                        if(id === 1) elS1.style.color = '#fff';
-                        if(id === 2) elS2.style.color = '#fff';
-                        if(id === 3) elS3.style.color = '#fff';
-
                         spawnParticleBurst(n.position, STEM_COLORS[id] || 0xffffff, 28);
 
                         n.material.dispose();
@@ -1992,7 +2091,7 @@
                         if(notesCollected === 3){
                             portal.visible = true;
                             spawnRipple(portal.position);
-                            showMsg('青色傳送門已開：現在可以撤離', 1600);
+                            showMsg('青色傳送門已開：撤離後，下一區域才會新增音軌', 1700);
                         }else{
                             showMsg(`已收集音軌碎片 ${notesCollected} / 3`, 1100);
                         }
