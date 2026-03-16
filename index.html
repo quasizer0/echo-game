@@ -567,6 +567,13 @@
         let kitePressure = 0;
         let cutOffBeats = 0;
         let moveChainTime = 0;
+        let syncCollapse = 0;
+        let infoClarity = 0.58;
+        let sprintTime = 0;
+        let stillListenTime = 0;
+        let scanPulse = 0;
+        let scanPulseStrength = 0;
+        let scanPulseClarity = 0.58;
 
         let lastSafePlayerPos = new THREE.Vector3();
 
@@ -1510,6 +1517,123 @@
             }
         }
 
+        function getCollapseStage(value = syncCollapse){
+            if(value >= 85){
+                return {
+                    key:'CRITICAL',
+                    color:'#ff7a5f',
+                    main:'SYNC COLLAPSE',
+                    sub:'再拖下去你會自己把節奏玩壞。跟拍、停一下、直接收尾。'
+                };
+            }
+            if(value >= 60){
+                return {
+                    key:'SEVERE',
+                    color:'#ffb04d',
+                    main:'SYNC UNSTABLE',
+                    sub:'連跑只會看到失真的殘影；跟拍才看得清，停一下才聽得懂。'
+                };
+            }
+            if(value >= 30){
+                return {
+                    key:'WARN',
+                    color:'#ffd166',
+                    main:'SYNC STRAIN',
+                    sub:'你開始失同步了。跑只能瞥見，跟拍才會比較清楚。'
+                };
+            }
+            return {
+                key:'OK',
+                color:'#00ffcc',
+                main:'SYNC STABLE',
+                sub:'跑只能短暫掃描；跟拍最清楚，停下來可重新同步。'
+            };
+        }
+
+        function updatePerceptionState(dt, movementState, distMoved, distToMonster){
+            const moving = movementState.isTryingToMove && distMoved > 0.001;
+            const sprinting = moving && keys['shift'];
+            const onBeatStep = moving && beatAssistEnabled && movementState.inBeatWindow;
+            const offBeatMove = moving && beatAssistEnabled && !movementState.inBeatWindow;
+
+            if(moving){
+                stillListenTime = 0;
+                sprintTime = sprinting ? sprintTime + dt : Math.max(0, sprintTime - 2.2 * dt);
+
+                syncCollapse = Math.min(100, syncCollapse + (sprinting ? 5.6 : 1.9) * dt);
+                if(offBeatMove) syncCollapse = Math.min(100, syncCollapse + 7.8 * dt);
+                if(notesCollected === 3) syncCollapse = Math.min(100, syncCollapse + 0.7 * dt);
+
+                if(onBeatStep){
+                    syncCollapse = Math.max(0, syncCollapse - 9.5 * dt);
+                    scanPulse = Math.max(scanPulse, 0.36);
+                    scanPulseStrength = 1.0;
+                    scanPulseClarity = clamp(0.62 + (1 - syncCollapse / 100) * 0.28, 0.45, 0.96);
+                }else if(sprinting){
+                    scanPulse = Math.max(scanPulse, 0.24);
+                    scanPulseStrength = 0.72;
+                    scanPulseClarity = clamp(0.42 - Math.min(sprintTime, 4) * 0.05 - (syncCollapse / 100) * 0.16, 0.12, 0.54);
+                }else{
+                    scanPulse = Math.max(scanPulse, 0.18);
+                    scanPulseStrength = 0.56;
+                    scanPulseClarity = clamp(0.48 - (syncCollapse / 100) * 0.12, 0.2, 0.58);
+                }
+            }else{
+                sprintTime = Math.max(0, sprintTime - 2.8 * dt);
+                stillListenTime += dt;
+                syncCollapse = Math.max(0, syncCollapse - (stillListenTime > 0.8 ? 8.4 : 4.1) * dt);
+
+                if(stillListenTime > 0.8){
+                    scanPulse = Math.max(scanPulse, 0.14);
+                    scanPulseStrength = 0.35;
+                    scanPulseClarity = clamp(0.72 - (syncCollapse / 100) * 0.18, 0.38, 0.82);
+                }
+            }
+
+            if(graceTimer <= 0){
+                const proximityPressure = clamp((10 - distToMonster) / 10, 0, 1);
+                syncCollapse = Math.min(100, syncCollapse + proximityPressure * (isAlertActive ? 3.4 : 1.6) * dt);
+            }
+
+            const collapseT = syncCollapse / 100;
+            const listenBonus = stillListenTime > 0.8 ? Math.min((stillListenTime - 0.8) * 0.35, 0.18) : 0;
+
+            infoClarity = clamp(
+                0.54
+                + (onBeatStep ? 0.22 : 0)
+                + listenBonus
+                - Math.min(sprintTime, 4) * 0.085
+                - (offBeatMove ? 0.08 : 0)
+                - collapseT * 0.34
+                - (isAlertActive ? 0.05 : 0),
+                0.12,
+                0.96
+            );
+
+            scanPulse = Math.max(0, scanPulse - dt * 2.6);
+        }
+
+        function updatePerceptionLighting(){
+            const curLvl = LEVELS[currentLevelIdx] || { flash:0x00ffff };
+            camera.getWorldDirection(_forward);
+            _forward.y = 0;
+            _forward.normalize();
+
+            const pulse = scanPulse * scanPulseStrength;
+            const clarityT = scanPulse > 0 ? scanPulseClarity : infoClarity;
+            const collapseT = syncCollapse / 100;
+
+            flashLight.color.setHex(curLvl.flash);
+            flashLight.position.copy(camera.position).addScaledVector(_forward, 1.9 + clarityT * 1.2);
+            flashLight.position.y = camera.position.y + 0.05;
+            flashLight.distance = lerp(7.5, 15.0, clarityT) + pulse * 4.5;
+            flashLight.intensity = pulse * lerp(3.6, 9.8, clarityT) * lerp(1.0, 0.62, collapseT);
+
+            if(stillListenTime > 0.8){
+                flashLight.intensity *= 0.72;
+            }
+        }
+
         function getCellKey(cell){
             return `${cell.x},${cell.z}`;
         }
@@ -1519,60 +1643,15 @@
         }
 
         function trackPlayerRoute(cell){
-            const key = getCellKey(cell);
-            const repeatCount = playerBeatTrail.filter(k => k === key).length;
-            playerBeatTrail.push(key);
-            if(playerBeatTrail.length > KITE_TRAIL_LENGTH) playerBeatTrail.shift();
-
-            const repeatTriggered = (repeatCount + 1) >= KITE_REPEAT_TRIGGER;
-            const runTriggered = moveChainTime >= 3.6;
-
-            if(repeatTriggered || runTriggered){
-                const wasOff = cutOffBeats <= 0;
-                kitePressure = clamp(kitePressure + (repeatTriggered ? 1.2 : 0.6), 0, 4);
-                cutOffBeats = Math.max(cutOffBeats, KITE_LOCK_BEATS + Math.round(kitePressure * 2));
-                if(wasOff){
-                    showMsg(repeatTriggered ? '反溜鬼啟動：牠開始切你前方' : '持續奔跑過久：牠已鎖定你的節奏', 1100);
-                }
-            }else{
-                kitePressure = Math.max(0, kitePressure - 0.2);
-                cutOffBeats = Math.max(0, cutOffBeats - 1);
-            }
+            return;
         }
 
         function getCutOffTargetCell(pCell){
-            if(playerBeatTrail.length < 2) return pCell;
-
-            let prev = null;
-            for(let i = playerBeatTrail.length - 2; i >= 0; i--){
-                const [x, z] = playerBeatTrail[i].split(',').map(Number);
-                if(x !== pCell.x || z !== pCell.z){
-                    prev = { x, z };
-                    break;
-                }
-            }
-            if(!prev) return pCell;
-
-            let dx = Math.sign(pCell.x - prev.x);
-            let dz = Math.sign(pCell.z - prev.z);
-            if(dx !== 0 && dz !== 0){
-                if(Math.abs(pCell.x - prev.x) >= Math.abs(pCell.z - prev.z)) dz = 0;
-                else dx = 0;
-            }
-            if(dx === 0 && dz === 0) return pCell;
-
-            const lookAhead = KITE_LOOKAHEAD + Math.min(Math.floor(kitePressure), 3);
-            let target = { x:pCell.x, z:pCell.z };
-            for(let s = 0; s < lookAhead; s++){
-                const nx = target.x + dx;
-                const nz = target.z + dz;
-                if(!isWalkableCell(nx, nz)) break;
-                target = { x:nx, z:nz };
-            }
-            return target;
+            return pCell;
         }
 
         function resetSession(fullReset = false){
+
             clearTransientUI();
 
             notesCollected = 0;
@@ -1600,6 +1679,13 @@
             kitePressure = 0;
             cutOffBeats = 0;
             moveChainTime = 0;
+            syncCollapse = 0;
+            infoClarity = 0.58;
+            sprintTime = 0;
+            stillListenTime = 0;
+            scanPulse = 0;
+            scanPulseStrength = 0;
+            scanPulseClarity = 0.58;
 
             if(fullReset){
                 currentLevelIdx = 0;
@@ -1904,38 +1990,32 @@
             if(graceTimer > 0) return;
 
             const pCell = worldToCell(camera.position);
-            trackPlayerRoute(pCell);
-            const targetCell = cutOffBeats > 0 ? getCutOffTargetCell(pCell) : pCell;
-            const chaseMap = getDistanceMap(mazeGrid, targetCell.x, targetCell.z);
+            const chaseMap = getDistanceMap(mazeGrid, pCell.x, pCell.z);
 
             const isAssistBeat = ((beatCount + ASSIST_PHASE) % ASSIST_EVERY_N_BEATS) === 0;
-
             if(isAssistBeat && beatAssistEnabled){
                 sonarRevealTimer = 0.15;
             }
 
             if(monsterStatus === AI_STATE.HUNT){
-                const chaseLocked = cutOffBeats > 0 || moveChainTime >= 3.6;
-                const moveEvery = chaseLocked ? 1 : (isAlertActive ? activeMonsterDef.alertMoveEvery : activeMonsterDef.moveEvery);
+                const moveEvery = isAlertActive ? activeMonsterDef.alertMoveEvery : activeMonsterDef.moveEvery;
                 const shouldMove = beatCount % moveEvery === 0;
                 if(shouldMove){
                     const baseSteps = notesCollected === 3 ? activeMonsterDef.end : activeMonsterDef.base;
-                    let huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0);
-                    if(chaseLocked) huntSteps += 2 + Math.min(Math.floor(kitePressure), 2);
+                    const huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0);
                     moveMonsterOneChaseBurst(chaseMap, huntSteps);
                 }
 
-                let chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
-                if(chaseLocked) chargeFreq = Math.max(2, chargeFreq - 4);
+                const chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
                 if(beatCount % chargeFreq === 0){
                     monsterStatus = AI_STATE.CHARGE;
                     aiTimer = 0;
-                    screenShake = chaseLocked ? 0.72 : (isAlertActive ? 0.55 : 0.34);
-                    showMsg(chaseLocked ? '反溜鬼：牠直接切進你的前方節拍' : (isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動'), 900);
+                    screenShake = isAlertActive ? 0.55 : 0.34;
+                    showMsg(isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動', 900);
                 }
             }
             else if(monsterStatus === AI_STATE.DASH){
-                moveMonsterOneChaseBurst(chaseMap, activeMonsterDef.dash + (cutOffBeats > 0 ? 1 : 0));
+                moveMonsterOneChaseBurst(chaseMap, activeMonsterDef.dash);
                 monsterStatus = AI_STATE.RECOVER;
             }
             else if(monsterStatus === AI_STATE.RECOVER){
@@ -2001,16 +2081,14 @@
                         const baseNoise = keys['shift'] ? 72 : 24;
                         const mult = (movementState.inBeatWindow && beatAssistEnabled) ? ON_BEAT_NOISE_MULT : 1.0;
                         const runTax = moveChainTime > 2.2 ? lerp(0, keys['shift'] ? 28 : 16, clamp((moveChainTime - 2.2) / 3.8, 0, 1)) : 0;
-                        playerNoise = Math.min(100, playerNoise + (baseNoise * mult + runTax) * dt);
+                        const collapseTax = (!movementState.inBeatWindow && beatAssistEnabled) ? lerp(0, 20, syncCollapse / 100) : 0;
+                        playerNoise = Math.min(100, playerNoise + (baseNoise * mult + runTax + collapseTax) * dt);
                     }else{
                         moveChainTime = Math.max(0, moveChainTime - 2.4 * dt);
                         playerNoise = Math.max(0, playerNoise - 38 * dt);
                     }
 
-                    if(moveChainTime > 5.6){
-                        cutOffBeats = Math.max(cutOffBeats, 16);
-                        kitePressure = clamp(kitePressure + 0.02, 0, 4);
-                    }
+                    updatePerceptionState(dt, movementState, distMoved, distToMonster);
 
                     const curLvl = LEVELS[currentLevelIdx];
                     if(playerNoise >= curLvl.alertHigh && !isAlertActive){
@@ -2022,20 +2100,28 @@
                         showMsg('威脅下降：你重新躲回安靜區了。', 1200);
                     }
 
-                    // UI semantics: cyan advantage, red danger
+                    // UI semantics: red = danger, cyan = stable timing, amber = self-collapse
                     elNoiseBar.style.width = `${playerNoise}%`;
                     if(isAlertActive){
                         elNoiseBar.style.background = '#ff3b30';
                         elNoiseText.textContent = '[ ALERT ]';
                         elNoiseText.style.color = '#ff3b30';
-                    }else if(moveChainTime > 3.0){
-                        elNoiseBar.style.background = '#ff9f0a';
-                        elNoiseText.textContent = '[ RUNNING TOO LONG ]';
-                        elNoiseText.style.color = '#ff9f0a';
+                    }else if(syncCollapse >= 60){
+                        elNoiseBar.style.background = '#ffb04d';
+                        elNoiseText.textContent = '[ SYNC COLLAPSE ]';
+                        elNoiseText.style.color = '#ffb04d';
+                    }else if(syncCollapse >= 30){
+                        elNoiseBar.style.background = '#ffd166';
+                        elNoiseText.textContent = '[ SYNC STRAIN ]';
+                        elNoiseText.style.color = '#ffd166';
                     }else if(beatBuffTimer > 0){
                         elNoiseBar.style.background = '#00ffcc';
-                        elNoiseText.textContent = '[ ON BEAT : SPEED+ / NOISE- ]';
+                        elNoiseText.textContent = '[ ON BEAT : CLEARER / QUIETER ]';
                         elNoiseText.style.color = '#00ffcc';
+                    }else if(stillListenTime > 0.8){
+                        elNoiseBar.style.background = '#8affea';
+                        elNoiseText.textContent = '[ LISTENING / RE-SYNC ]';
+                        elNoiseText.style.color = '#8affea';
                     }else{
                         elNoiseBar.style.background = '#ffffff';
                         elNoiseText.textContent = '[ NOISE LEVEL ]';
@@ -2059,21 +2145,25 @@
                     updateStemMix(now);
 
                     // status text
+                    const collapseStage = getCollapseStage();
                     if(graceTimer > 0){
                         elStatusMain.textContent = `OBSERVE WINDOW ${graceTimer.toFixed(1)}s`;
-                        elStatusSub.textContent = '這段時間怪物不追你，先看路、先聽聲。';
+                        elStatusSub.textContent = '這段時間怪物不追你。先看路、先聽聲、先抓節拍。';
                     }else if(monsterStatus === AI_STATE.CHARGE){
                         elStatusMain.textContent = 'DANGER : CHARGE';
-                        elStatusSub.textContent = '紅色只是更危險，不代表怪物才剛存在。';
+                        elStatusSub.textContent = '紅色只是更危險，不代表怪物作弊。這時別硬衝直線。';
                     }else if(monsterStatus === AI_STATE.DASH){
                         elStatusMain.textContent = 'DANGER : DASH';
-                        elStatusSub.textContent = '這時別硬衝直線，優先切角。';
+                        elStatusSub.textContent = '跑只能瞥見；要看清路口，盡量踩拍切角。';
                     }else if(isAlertActive){
-                        elStatusMain.textContent = cutOffBeats > 0 ? 'ALERT + CUT OFF' : 'ALERT ACTIVE';
-                        elStatusSub.textContent = cutOffBeats > 0 ? '牠正在讀你的繞圈路線，別再走同一條。' : '噪音太高。停、繞、等下一個節拍。';
-                    }else if(cutOffBeats > 0){
-                        elStatusMain.textContent = 'CUT OFF ACTIVE';
-                        elStatusSub.textContent = '你重複繞圈太久了，牠正在切前方。';
+                        elStatusMain.textContent = 'ALERT ACTIVE';
+                        elStatusSub.textContent = '噪音太高。停一下重整節拍，否則你只會越看越亂。';
+                    }else if(syncCollapse >= 30){
+                        elStatusMain.textContent = collapseStage.main;
+                        elStatusSub.textContent = collapseStage.sub;
+                    }else if(stillListenTime > 0.8){
+                        elStatusMain.textContent = 'RE-SYNC WINDOW';
+                        elStatusSub.textContent = '停下來後，你的節拍提示會更穩，怪物方位也更好判。';
                     }else{
                         updateObjectiveUI();
                     }
@@ -2098,25 +2188,24 @@
                     const nearestAssist = getNearestAssistBeat(now);
                     const beatDelta = Math.abs(now - nearestAssist.time);
                     const beatPulse = clamp(1 - beatDelta / (BEAT_INT * 0.55), 0, 1);
-                    const ringScale = 1 + beatPulse * 0.22;
-                    const ringOpacity = lerp(0.14, 0.82, beatPulse);
-                    const ringColor = '#00ffcc';
+                    const collapseT = syncCollapse / 100;
+                    const jitter = collapseT * (0.012 + Math.abs(Math.sin(now * 24)) * 0.022);
+                    const ringScale = 1 + beatPulse * lerp(0.14, 0.26, infoClarity) + jitter;
+                    const ringOpacity = lerp(0.10, 0.84, beatPulse) * lerp(0.7, 1.0, infoClarity) + (stillListenTime > 0.8 ? 0.08 : 0);
+                    const ringBlur = (1 - infoClarity) * 1.35;
+                    const ringColor = syncCollapse >= 60 ? '#9bffe8' : '#00ffcc';
                     elBeatRing.style.display = 'block';
-                    elBeatRing.style.opacity = String(ringOpacity);
+                    elBeatRing.style.opacity = String(clamp(ringOpacity, 0.08, 0.96));
                     elBeatRing.style.transform = `translate(-50%,-50%) scale(${ringScale})`;
                     elBeatRing.style.borderColor = ringColor;
-                    elBeatRing.style.boxShadow = `0 0 ${6 + beatPulse * 18}px rgba(0,255,204,${0.12 + beatPulse * 0.35})`;
+                    elBeatRing.style.boxShadow = `0 0 ${6 + beatPulse * lerp(10, 20, infoClarity)}px rgba(0,255,204,${0.10 + beatPulse * lerp(0.22, 0.42, infoClarity)})`;
+                    elBeatRing.style.filter = `blur(${ringBlur.toFixed(2)}px)`;
                 }else{
                     elBeatRing.style.display = 'none';
                 }
 
-                // analyser / flashlight / monster readability
-                if(analyser && dataArray){
-                    analyser.getByteFrequencyData(dataArray);
-                    const kick = (dataArray[1] + dataArray[2]) / 510;
-                    flashLight.position.copy(camera.position);
-                    flashLight.intensity = Math.pow(kick, 4.5) * 15;
-                }
+                // perception lighting / monster readability
+                updatePerceptionLighting();
 
                 if(monster.visible){
                     let targetOpacity = 0;
@@ -2129,11 +2218,17 @@
                     }else if(sonarRevealTimer > 0){
                         targetOpacity = 0.55;
                         monster.material.wireframe = true;
-                    }else if(cutOffBeats > 0 || moveChainTime >= 3.6){
-                        targetOpacity = 0.28;
+                    }else if(beatBuffTimer > 0){
+                        targetOpacity = 0.24 + infoClarity * 0.18;
+                        monster.material.wireframe = false;
+                    }else if(stillListenTime > 0.8){
+                        targetOpacity = 0.18;
+                        monster.material.wireframe = true;
+                    }else if(keys['shift'] && moveChainTime >= 1.2){
+                        targetOpacity = 0.11 + scanPulse * 0.16;
                         monster.material.wireframe = false;
                     }else{
-                        targetOpacity = 0.16;
+                        targetOpacity = 0.12;
                         monster.material.wireframe = true;
                     }
                     monster.material.opacity = targetOpacity;
