@@ -235,6 +235,35 @@
             display:none;
         }
 
+        #beat-ring{
+            position:absolute;
+            left:50%;
+            top:50%;
+            transform:translate(-50%,-50%) scale(1);
+            width:42px;
+            height:42px;
+            border:2px solid rgba(0,255,204,.18);
+            border-radius:50%;
+            display:none;
+            pointer-events:none;
+            box-shadow:0 0 0 rgba(0,255,204,0);
+            mix-blend-mode:screen;
+        }
+
+        #timing-judge{
+            position:absolute;
+            left:50%;
+            top:calc(50% + 34px);
+            transform:translateX(-50%);
+            display:none;
+            pointer-events:none;
+            font-size:12px;
+            font-weight:bold;
+            letter-spacing:1.5px;
+            color:#00ffcc;
+            text-shadow:0 0 10px rgba(0,255,204,.25);
+        }
+
         .small-note{
             color:#8c8c8c;
             font-size:13px;
@@ -270,7 +299,7 @@
                 <button id="btn-start">啟動序列修復 (START)</button>
             </div>
 
-            <div id="version-tag">Rework Build - readable / looped / no timer</div>
+            <div id="version-tag">Rework Build - input+mix+collision hotfix</div>
         </div>
 
         <div id="transition-overlay" class="overlay" style="display:none;">
@@ -319,6 +348,8 @@
         <div id="msg-box"></div>
         <div id="edge-warning"></div>
         <div id="crosshair"></div>
+        <div id="beat-ring"></div>
+        <div id="timing-judge"></div>
     </div>
 
     <script type="importmap">
@@ -367,6 +398,7 @@
         const ASSIST_PHASE = 0;
 
         const ON_BEAT_WINDOW = 0.10;
+        const PERFECT_BEAT_WINDOW = 0.045;
         const ON_BEAT_SPEED_MULT = 1.18;
         const ON_BEAT_BUFF_TIME = 0.18;
         const ON_BEAT_NOISE_MULT = 0.38;
@@ -375,6 +407,8 @@
         const WALL_VISUAL_SIZE = 5.2;
         const WALL_COLLIDER_HALF = WALL_VISUAL_SIZE * 0.5;
         const PLAYER_RADIUS = 0.82;
+        const COLLISION_EPS = 0.035;
+        const PLAYER_PUSH_ITERS = 3;
 
         const STEM_COLORS = {
             1:0x00aaff,  // bass
@@ -445,6 +479,8 @@
                 fog:0x06141a,
                 flash:0x00ffff,
                 beatAssist:true,
+                alertHigh:56,
+                alertLow:26,
                 rooms:2,
                 loops:12,
                 grace:3.5
@@ -456,6 +492,8 @@
                 fog:0x120616,
                 flash:0xbb66ff,
                 beatAssist:true,
+                alertHigh:48,
+                alertLow:22,
                 rooms:3,
                 loops:18,
                 grace:3.0
@@ -467,6 +505,8 @@
                 fog:0x1d0704,
                 flash:0xff5b2e,
                 beatAssist:false,
+                alertHigh:42,
+                alertLow:18,
                 rooms:4,
                 loops:26,
                 grace:2.5
@@ -513,6 +553,9 @@
         let beatAssistEnabled = false;
         let playerNoise = 0;
         let isAlertActive = false;
+        let timingJudgeTimer = 0;
+        let lastMoveJudgeBeatId = -999;
+        let wasTryingToMoveLastFrame = false;
 
         let mazeGrid = [];
         let mazeW = 17;
@@ -652,6 +695,8 @@
         const elMsg = document.getElementById('msg-box');
         const elEdgeWarning = document.getElementById('edge-warning');
         const elCrosshair = document.getElementById('crosshair');
+        const elBeatRing = document.getElementById('beat-ring');
+        const elTimingJudge = document.getElementById('timing-judge');
 
         const elS1 = document.getElementById('s1');
         const elS2 = document.getElementById('s2');
@@ -672,6 +717,23 @@
             return a + (b-a) * t;
         }
 
+        function setTimingJudge(label, color){
+            timingJudgeTimer = 0.24;
+            elTimingJudge.textContent = label;
+            elTimingJudge.style.color = color;
+            elTimingJudge.style.display = 'block';
+        }
+
+        function getTimingJudgeLabel(timeToNearest){
+            if(timeToNearest <= PERFECT_BEAT_WINDOW){
+                return { label:'PERFECT', color:'#00ffcc' };
+            }
+            if(timeToNearest <= ON_BEAT_WINDOW){
+                return { label:'ON BEAT', color:'#8affea' };
+            }
+            return { label:'OFF BEAT', color:'#ff9b7f' };
+        }
+
         function showMsg(txt, dur = 1800){
             elMsg.textContent = txt;
             elMsg.style.display = 'block';
@@ -689,6 +751,8 @@
             elMsg.textContent = '';
             elDeathReason.style.display = 'none';
             elDeathReason.textContent = '';
+            elTimingJudge.style.display = 'none';
+            timingJudgeTimer = 0;
         }
 
         function hideAllOverlays(){
@@ -896,6 +960,70 @@
         // =========================
         // 7) Collision / movement
         // =========================
+        function circleIntersectsWall(px, pz, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
+            const minX = wx - WALL_COLLIDER_HALF;
+            const maxX = wx + WALL_COLLIDER_HALF;
+            const minZ = wz - WALL_COLLIDER_HALF;
+            const maxZ = wz + WALL_COLLIDER_HALF;
+
+            const nearestX = clamp(px, minX, maxX);
+            const nearestZ = clamp(pz, minZ, maxZ);
+            const dx = px - nearestX;
+            const dz = pz - nearestZ;
+            return (dx * dx + dz * dz) < (radius * radius);
+        }
+
+        function resolvePlayerCollision(pos){
+            for(let iter = 0; iter < PLAYER_PUSH_ITERS; iter++){
+                let pushed = false;
+                const centerCell = worldToCell({ x:pos.x, z:pos.z });
+
+                for(let z = centerCell.z - 2; z <= centerCell.z + 2; z++){
+                    for(let x = centerCell.x - 2; x <= centerCell.x + 2; x++){
+                        if(z < 0 || z >= mazeH || x < 0 || x >= mazeW) continue;
+                        if(mazeGrid[z][x] !== 1) continue;
+
+                        const wx = worldX(x);
+                        const wz = worldZ(z);
+                        const minX = wx - WALL_COLLIDER_HALF;
+                        const maxX = wx + WALL_COLLIDER_HALF;
+                        const minZ = wz - WALL_COLLIDER_HALF;
+                        const maxZ = wz + WALL_COLLIDER_HALF;
+
+                        const nearestX = clamp(pos.x, minX, maxX);
+                        const nearestZ = clamp(pos.z, minZ, maxZ);
+                        let dx = pos.x - nearestX;
+                        let dz = pos.z - nearestZ;
+                        let distSq = dx * dx + dz * dz;
+                        const radius = PLAYER_RADIUS + COLLISION_EPS;
+
+                        if(distSq >= radius * radius) continue;
+
+                        if(distSq < 1e-8){
+                            const offX = pos.x - wx;
+                            const offZ = pos.z - wz;
+                            if(Math.abs(offX) >= Math.abs(offZ)){
+                                dx = offX >= 0 ? 1 : -1;
+                                dz = 0;
+                            }else{
+                                dx = 0;
+                                dz = offZ >= 0 ? 1 : -1;
+                            }
+                            distSq = 1;
+                        }
+
+                        const dist = Math.sqrt(distSq);
+                        const overlap = radius - dist;
+                        pos.x += (dx / dist) * (overlap + 0.001);
+                        pos.z += (dz / dist) * (overlap + 0.001);
+                        pushed = true;
+                    }
+                }
+
+                if(!pushed) break;
+            }
+        }
+
         function collidesAt(px, pz){
             const centerCell = worldToCell({ x:px, z:pz });
             for(let z = centerCell.z - 2; z <= centerCell.z + 2; z++){
@@ -905,11 +1033,7 @@
 
                     const wx = worldX(x);
                     const wz = worldZ(z);
-
-                    const dx = Math.abs(px - wx);
-                    const dz = Math.abs(pz - wz);
-
-                    if(dx < WALL_COLLIDER_HALF + PLAYER_RADIUS && dz < WALL_COLLIDER_HALF + PLAYER_RADIUS){
+                    if(circleIntersectsWall(px, pz, wx, wz)){
                         return true;
                     }
                 }
@@ -923,7 +1047,7 @@
             _forward.y = 0;
             _forward.normalize();
 
-            _right.crossVectors(_up, _forward).normalize();
+            _right.crossVectors(_forward, _up).normalize();
 
             let inputX = 0;
             let inputZ = 0;
@@ -939,10 +1063,20 @@
             const timeToNearest = Math.abs(now - nearestAssist.time);
             const inBeatWindow = beatAssistEnabled && isTryingToMove && timeToNearest <= ON_BEAT_WINDOW;
 
+            if(beatAssistEnabled && isTryingToMove && !wasTryingToMoveLastFrame){
+                const judge = getTimingJudgeLabel(timeToNearest);
+                setTimingJudge(judge.label, judge.color);
+            }
+
             if(inBeatWindow){
                 if(nearestAssist.id !== lastRewardedAssistBeatId){
                     beatBuffTimer = ON_BEAT_BUFF_TIME;
                     lastRewardedAssistBeatId = nearestAssist.id;
+                }
+                if(nearestAssist.id !== lastMoveJudgeBeatId){
+                    const judge = getTimingJudgeLabel(timeToNearest);
+                    setTimingJudge(judge.label, judge.color);
+                    lastMoveJudgeBeatId = nearestAssist.id;
                 }
             }
 
@@ -956,19 +1090,15 @@
             if(move.lengthSq() > 0){
                 move.normalize().multiplyScalar(finalSpeed * dt);
 
-                // axis-separated sliding to avoid corner sticking
-                const nextX = camera.position.x + move.x;
-                if(!collidesAt(nextX, camera.position.z)){
-                    camera.position.x = nextX;
-                }
+                camera.position.x += move.x;
+                resolvePlayerCollision(camera.position);
 
-                const nextZ = camera.position.z + move.z;
-                if(!collidesAt(camera.position.x, nextZ)){
-                    camera.position.z = nextZ;
-                }
+                camera.position.z += move.z;
+                resolvePlayerCollision(camera.position);
             }
 
-            return { isTryingToMove, inBeatWindow };
+            wasTryingToMoveLastFrame = isTryingToMove;
+            return { isTryingToMove, inBeatWindow, timeToNearest };
         }
 
         // =========================
@@ -1145,14 +1275,13 @@
 
             const danger = clamp(Math.max(dangerDist, dangerState), 0, 1);
 
-            // duck BGM when danger rises
-            const duck = lerp(1.0, 0.55, danger);
+            // keep music more present even under danger
+            const duck = lerp(1.0, 0.78, danger);
 
-            // DRUMS stay present, others quieter so threat info can breathe
-            stems[0].gain.gain.setTargetAtTime(0.48 * duck, now, 0.08);
-            stems[1].gain.gain.setTargetAtTime(currentCollectedIds.has(1) ? 0.22 * duck : 0.0, now, 0.12);
-            stems[2].gain.gain.setTargetAtTime(currentCollectedIds.has(2) ? 0.20 * duck : 0.0, now, 0.12);
-            stems[3].gain.gain.setTargetAtTime(currentCollectedIds.has(3) ? 0.18 * duck : 0.0, now, 0.12);
+            stems[0].gain.gain.setTargetAtTime(0.72 * duck, now, 0.08);
+            stems[1].gain.gain.setTargetAtTime(currentCollectedIds.has(1) ? 0.42 * duck : 0.0, now, 0.12);
+            stems[2].gain.gain.setTargetAtTime(currentCollectedIds.has(2) ? 0.38 * duck : 0.0, now, 0.12);
+            stems[3].gain.gain.setTargetAtTime(currentCollectedIds.has(3) ? 0.34 * duck : 0.0, now, 0.12);
 
             if(threatGain){
                 const dist = camera.position.distanceTo(monster.position);
@@ -1164,7 +1293,7 @@
                     if(monsterStatus === AI_STATE.CHARGE) stateBoost = 1.38;
                     else if(monsterStatus === AI_STATE.DASH) stateBoost = 1.62;
                     if(isAlertActive) stateBoost *= 1.18;
-                    targetThreatGain = clamp(distFactor * 0.72 * stateBoost, 0, 0.95);
+                    targetThreatGain = clamp(distFactor * 0.52 * stateBoost, 0, 0.72);
                 }
 
                 threatGain.gain.setTargetAtTime(targetThreatGain, now, 0.18);
@@ -1177,7 +1306,7 @@
                         camera.getWorldDirection(_forward);
                         _forward.y = 0;
                         _forward.normalize();
-                        _right.crossVectors(_up, _forward).normalize();
+                        _right.crossVectors(_forward, _up).normalize();
 
                         const pan = clamp(_right.dot(_tmpVec), -1, 1);
                         threatPanner.pan.setTargetAtTime(pan * 0.9, now, 0.12);
@@ -1295,6 +1424,8 @@
             beatBuffTimer = 0;
             lastPlayedBeatTime = -999;
             lastRewardedAssistBeatId = -999;
+            lastMoveJudgeBeatId = -999;
+            wasTryingToMoveLastFrame = false;
 
             victoryTimer = 0;
             tutorialTimer = -1;
@@ -1303,6 +1434,7 @@
 
             playerNoise = 0;
             isAlertActive = false;
+            timingJudgeTimer = 0;
             monsterStatus = AI_STATE.HUNT;
 
             if(fullReset){
@@ -1537,6 +1669,8 @@
                 elStageIndicator.style.display = state === STATE.GAME ? 'block' : 'none';
                 elStatusBox.style.display = state === STATE.GAME ? 'block' : 'none';
                 elCrosshair.style.display = state === STATE.GAME ? 'block' : 'none';
+                elBeatRing.style.display = (state === STATE.GAME && beatAssistEnabled) ? 'block' : 'none';
+                elTimingJudge.style.display = 'none';
 
                 if(state === STATE.GAME){
                     elEnvName.textContent = curLvl.envName;
@@ -1660,6 +1794,7 @@
             }
 
             if(isPaused){
+                elBeatRing.style.display = 'none';
                 renderer.render(scene, camera);
                 return;
             }
@@ -1670,6 +1805,12 @@
                 if(graceTimer > 0) graceTimer -= dt;
                 if(sonarRevealTimer > 0) sonarRevealTimer -= dt;
                 if(beatBuffTimer > 0) beatBuffTimer -= dt;
+                if(timingJudgeTimer > 0){
+                    timingJudgeTimer -= dt;
+                    if(timingJudgeTimer <= 0){
+                        elTimingJudge.style.display = 'none';
+                    }
+                }
 
                 const movementState = movePlayer(dt);
 
@@ -1761,6 +1902,22 @@
                         handleBeat();
                         nextBeatTime += BEAT_INT;
                     }
+                }
+
+                if(beatAssistEnabled && audioCtx && musicStartAbsTime > 0){
+                    const nearestAssist = getNearestAssistBeat(now);
+                    const beatDelta = Math.abs(now - nearestAssist.time);
+                    const beatPulse = clamp(1 - beatDelta / (BEAT_INT * 0.55), 0, 1);
+                    const ringScale = 1 + beatPulse * 0.22;
+                    const ringOpacity = lerp(0.14, 0.82, beatPulse);
+                    const ringColor = '#00ffcc';
+                    elBeatRing.style.display = 'block';
+                    elBeatRing.style.opacity = String(ringOpacity);
+                    elBeatRing.style.transform = `translate(-50%,-50%) scale(${ringScale})`;
+                    elBeatRing.style.borderColor = ringColor;
+                    elBeatRing.style.boxShadow = `0 0 ${6 + beatPulse * 18}px rgba(0,255,204,${0.12 + beatPulse * 0.35})`;
+                }else{
+                    elBeatRing.style.display = 'none';
                 }
 
                 // analyser / flashlight / monster readability
