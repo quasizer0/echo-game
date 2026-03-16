@@ -299,7 +299,7 @@
                 <button id="btn-start">啟動序列修復 (START)</button>
             </div>
 
-            <div id="version-tag">Rework Build - input+mix+collision hotfix</div>
+            <div id="version-tag">Rework Build v3 - anti-kite + corner slide</div>
         </div>
 
         <div id="transition-overlay" class="overlay" style="display:none;">
@@ -405,15 +405,15 @@
 
         const GRID_SIZE = 6;
         const WALL_VISUAL_SIZE = 5.2;
-        const WALL_COLLIDER_HALF = WALL_VISUAL_SIZE * 0.5 - 0.08;
-        const WALL_CORNER_RADIUS = 0.92;
-        const PLAYER_RADIUS = 0.82;
-        const COLLISION_EPS = 0.035;
-        const PLAYER_PUSH_ITERS = 4;
-        const KITE_TRAIL_LENGTH = 9;
-        const KITE_REPEAT_TRIGGER = 2;
-        const KITE_LOCK_BEATS = 8;
-        const KITE_LOOKAHEAD = 3;
+        const WALL_COLLIDER_HALF = WALL_VISUAL_SIZE * 0.5 - 0.18;
+        const WALL_CORNER_RADIUS = 0.0;
+        const PLAYER_RADIUS = 0.72;
+        const COLLISION_EPS = 0.02;
+        const PLAYER_PUSH_ITERS = 6;
+        const KITE_TRAIL_LENGTH = 18;
+        const KITE_REPEAT_TRIGGER = 3;
+        const KITE_LOCK_BEATS = 14;
+        const KITE_LOOKAHEAD = 5;
 
         const STEM_COLORS = {
             1:0x00aaff,  // bass
@@ -488,7 +488,7 @@
                 alertHigh:56,
                 alertLow:26,
                 rooms:2,
-                loops:8,
+                loops:5,
                 grace:3.5
             },
             {
@@ -501,7 +501,7 @@
                 alertHigh:48,
                 alertLow:22,
                 rooms:3,
-                loops:12,
+                loops:8,
                 grace:3.0
             },
             {
@@ -514,7 +514,7 @@
                 alertHigh:42,
                 alertLow:18,
                 rooms:4,
-                loops:16,
+                loops:11,
                 grace:2.5
             }
         ];
@@ -566,6 +566,9 @@
         let playerBeatTrail = [];
         let kitePressure = 0;
         let cutOffBeats = 0;
+        let moveChainTime = 0;
+
+        let lastSafePlayerPos = new THREE.Vector3();
 
         let mazeGrid = [];
         let mazeW = 17;
@@ -971,46 +974,93 @@
         // 7) Collision / movement
         // =========================
         function roundedWallSDF(px, pz, wx, wz, radiusInflate = PLAYER_RADIUS + COLLISION_EPS){
-            const half = WALL_COLLIDER_HALF + radiusInflate;
-            const corner = WALL_CORNER_RADIUS + radiusInflate;
-            const innerHalf = Math.max(half - corner, 0.001);
-
-            const qx = Math.abs(px - wx) - innerHalf;
-            const qz = Math.abs(pz - wz) - innerHalf;
-            const ox = Math.max(qx, 0);
-            const oz = Math.max(qz, 0);
-            return Math.hypot(ox, oz) + Math.min(Math.max(qx, qz), 0) - corner;
+            const half = WALL_COLLIDER_HALF;
+            const minX = wx - half;
+            const maxX = wx + half;
+            const minZ = wz - half;
+            const maxZ = wz + half;
+            const cx = clamp(px, minX, maxX);
+            const cz = clamp(pz, minZ, maxZ);
+            return Math.hypot(px - cx, pz - cz) - radiusInflate;
         }
 
         function getRoundedWallNormal(px, pz, wx, wz, radiusInflate = PLAYER_RADIUS + COLLISION_EPS){
-            const e = 0.002;
-            const gx = roundedWallSDF(px + e, pz, wx, wz, radiusInflate) - roundedWallSDF(px - e, pz, wx, wz, radiusInflate);
-            const gz = roundedWallSDF(px, pz + e, wx, wz, radiusInflate) - roundedWallSDF(px, pz - e, wx, wz, radiusInflate);
-            const len = Math.hypot(gx, gz);
+            const half = WALL_COLLIDER_HALF;
+            const minX = wx - half;
+            const maxX = wx + half;
+            const minZ = wz - half;
+            const maxZ = wz + half;
+            const cx = clamp(px, minX, maxX);
+            const cz = clamp(pz, minZ, maxZ);
+
+            let dx = px - cx;
+            let dz = pz - cz;
+            let len = Math.hypot(dx, dz);
+
             if(len > 1e-6){
-                return { x: gx / len, z: gz / len };
+                return { x: dx / len, z: dz / len };
             }
 
             const offX = px - wx;
             const offZ = pz - wz;
-            if(Math.abs(offX) >= Math.abs(offZ)){
+            const penX = (half + radiusInflate) - Math.abs(offX);
+            const penZ = (half + radiusInflate) - Math.abs(offZ);
+
+            if(penX < penZ){
                 return { x: offX >= 0 ? 1 : -1, z: 0 };
             }
             return { x: 0, z: offZ >= 0 ? 1 : -1 };
         }
 
         function circleIntersectsWall(px, pz, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
-            return roundedWallSDF(px, pz, wx, wz, radius) < 0;
+            const half = WALL_COLLIDER_HALF;
+            const cx = clamp(px, wx - half, wx + half);
+            const cz = clamp(pz, wz - half, wz + half);
+            const dx = px - cx;
+            const dz = pz - cz;
+            return (dx * dx + dz * dz) < (radius * radius);
         }
 
         function pushOutFromRoundedWall(pos, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
-            const sdf = roundedWallSDF(pos.x, pos.z, wx, wz, radius);
-            if(sdf >= 0) return false;
+            const half = WALL_COLLIDER_HALF;
+            const cx = clamp(pos.x, wx - half, wx + half);
+            const cz = clamp(pos.z, wz - half, wz + half);
+            let dx = pos.x - cx;
+            let dz = pos.z - cz;
+            let distSq = dx * dx + dz * dz;
+            const radiusSq = radius * radius;
 
-            const normal = getRoundedWallNormal(pos.x, pos.z, wx, wz, radius);
-            const push = -sdf + 0.003;
-            pos.x += normal.x * push;
-            pos.z += normal.z * push;
+            if(distSq >= radiusSq) return false;
+
+            let nx = 0;
+            let nz = 0;
+            let push = 0;
+
+            if(distSq > 1e-8){
+                const dist = Math.sqrt(distSq);
+                nx = dx / dist;
+                nz = dz / dist;
+                push = radius - dist + COLLISION_EPS;
+            }else{
+                const offX = pos.x - wx;
+                const offZ = pos.z - wz;
+                const penX = (half + radius) - Math.abs(offX);
+                const penZ = (half + radius) - Math.abs(offZ);
+
+                if(penX < penZ){
+                    nx = offX >= 0 ? 1 : -1;
+                    nz = 0;
+                    push = penX + COLLISION_EPS;
+                }else{
+                    nx = 0;
+                    nz = offZ >= 0 ? 1 : -1;
+                    push = penZ + COLLISION_EPS;
+                }
+            }
+
+            push = clamp(push, 0, 0.14);
+            pos.x += nx * push;
+            pos.z += nz * push;
             return true;
         }
 
@@ -1093,7 +1143,8 @@
             }
 
             let baseSpeed = keys['shift'] ? 9.8 : 6.0;
-            let finalSpeed = baseSpeed * (beatBuffTimer > 0 ? ON_BEAT_SPEED_MULT : 1.0);
+            const fatigueT = clamp((moveChainTime - 3.0) / 4.0, 0, 1);
+            let finalSpeed = baseSpeed * (beatBuffTimer > 0 ? ON_BEAT_SPEED_MULT : 1.0) * lerp(1.0, 0.82, fatigueT);
 
             const move = new THREE.Vector3();
             if(inputZ !== 0) move.addScaledVector(_forward, inputZ);
@@ -1102,16 +1153,33 @@
             if(move.lengthSq() > 0){
                 move.normalize().multiplyScalar(finalSpeed * dt);
 
-                const subSteps = Math.max(1, Math.ceil(move.length() / 0.34));
+                const subSteps = Math.max(1, Math.ceil(move.length() / 0.18));
                 const stepX = move.x / subSteps;
                 const stepZ = move.z / subSteps;
 
                 for(let i = 0; i < subSteps; i++){
+                    const prevX = camera.position.x;
                     camera.position.x += stepX;
                     resolvePlayerCollision(camera.position);
+                    if(collidesAt(camera.position.x, camera.position.z)){
+                        camera.position.x = prevX;
+                        resolvePlayerCollision(camera.position);
+                    }
 
+                    const prevZ = camera.position.z;
                     camera.position.z += stepZ;
                     resolvePlayerCollision(camera.position);
+                    if(collidesAt(camera.position.x, camera.position.z)){
+                        camera.position.z = prevZ;
+                        resolvePlayerCollision(camera.position);
+                    }
+
+                    if(collidesAt(camera.position.x, camera.position.z)){
+                        camera.position.copy(lastSafePlayerPos);
+                        break;
+                    }else{
+                        lastSafePlayerPos.copy(camera.position);
+                    }
                 }
             }
 
@@ -1456,15 +1524,18 @@
             playerBeatTrail.push(key);
             if(playerBeatTrail.length > KITE_TRAIL_LENGTH) playerBeatTrail.shift();
 
-            if(repeatCount + 1 >= KITE_REPEAT_TRIGGER){
+            const repeatTriggered = (repeatCount + 1) >= KITE_REPEAT_TRIGGER;
+            const runTriggered = moveChainTime >= 3.6;
+
+            if(repeatTriggered || runTriggered){
                 const wasOff = cutOffBeats <= 0;
-                kitePressure = clamp(kitePressure + 1, 0, 3);
-                cutOffBeats = Math.max(cutOffBeats, KITE_LOCK_BEATS);
+                kitePressure = clamp(kitePressure + (repeatTriggered ? 1.2 : 0.6), 0, 4);
+                cutOffBeats = Math.max(cutOffBeats, KITE_LOCK_BEATS + Math.round(kitePressure * 2));
                 if(wasOff){
-                    showMsg('路徑被讀取：牠開始切前方', 1000);
+                    showMsg(repeatTriggered ? '反溜鬼啟動：牠開始切你前方' : '持續奔跑過久：牠已鎖定你的節奏', 1100);
                 }
             }else{
-                kitePressure = Math.max(0, kitePressure - 0.25);
+                kitePressure = Math.max(0, kitePressure - 0.2);
                 cutOffBeats = Math.max(0, cutOffBeats - 1);
             }
         }
@@ -1490,7 +1561,7 @@
             }
             if(dx === 0 && dz === 0) return pCell;
 
-            const lookAhead = KITE_LOOKAHEAD + Math.min(kitePressure, 2);
+            const lookAhead = KITE_LOOKAHEAD + Math.min(Math.floor(kitePressure), 3);
             let target = { x:pCell.x, z:pCell.z };
             for(let s = 0; s < lookAhead; s++){
                 const nx = target.x + dx;
@@ -1528,6 +1599,7 @@
             playerBeatTrail = [];
             kitePressure = 0;
             cutOffBeats = 0;
+            moveChainTime = 0;
 
             if(fullReset){
                 currentLevelIdx = 0;
@@ -1752,6 +1824,7 @@
                 }
 
                 camera.position.set(worldX(1), 1.62, worldZ(1));
+                lastSafePlayerPos.copy(camera.position);
                 controls.lock();
 
                 scene.fog.color.setHex(curLvl.fog);
@@ -1842,21 +1915,23 @@
             }
 
             if(monsterStatus === AI_STATE.HUNT){
-                const shouldMove = beatCount % (isAlertActive ? activeMonsterDef.alertMoveEvery : activeMonsterDef.moveEvery) === 0;
+                const chaseLocked = cutOffBeats > 0 || moveChainTime >= 3.6;
+                const moveEvery = chaseLocked ? 1 : (isAlertActive ? activeMonsterDef.alertMoveEvery : activeMonsterDef.moveEvery);
+                const shouldMove = beatCount % moveEvery === 0;
                 if(shouldMove){
                     const baseSteps = notesCollected === 3 ? activeMonsterDef.end : activeMonsterDef.base;
                     let huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0);
-                    if(cutOffBeats > 0) huntSteps += 1;
+                    if(chaseLocked) huntSteps += 2 + Math.min(Math.floor(kitePressure), 2);
                     moveMonsterOneChaseBurst(chaseMap, huntSteps);
                 }
 
                 let chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
-                if(cutOffBeats > 0) chargeFreq = Math.max(4, chargeFreq - 2);
+                if(chaseLocked) chargeFreq = Math.max(2, chargeFreq - 4);
                 if(beatCount % chargeFreq === 0){
                     monsterStatus = AI_STATE.CHARGE;
                     aiTimer = 0;
-                    screenShake = isAlertActive ? 0.55 : 0.34;
-                    showMsg(cutOffBeats > 0 ? '路徑封鎖：牠在切你前方' : (isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動'), 800);
+                    screenShake = chaseLocked ? 0.72 : (isAlertActive ? 0.55 : 0.34);
+                    showMsg(chaseLocked ? '反溜鬼：牠直接切進你的前方節拍' : (isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動'), 900);
                 }
             }
             else if(monsterStatus === AI_STATE.DASH){
@@ -1922,11 +1997,19 @@
                     gameStats.totalTime += dt;
 
                     if(distMoved > 0.001){
+                        moveChainTime += dt;
                         const baseNoise = keys['shift'] ? 72 : 24;
                         const mult = (movementState.inBeatWindow && beatAssistEnabled) ? ON_BEAT_NOISE_MULT : 1.0;
-                        playerNoise = Math.min(100, playerNoise + baseNoise * dt * mult);
+                        const runTax = moveChainTime > 2.2 ? lerp(0, keys['shift'] ? 28 : 16, clamp((moveChainTime - 2.2) / 3.8, 0, 1)) : 0;
+                        playerNoise = Math.min(100, playerNoise + (baseNoise * mult + runTax) * dt);
                     }else{
+                        moveChainTime = Math.max(0, moveChainTime - 2.4 * dt);
                         playerNoise = Math.max(0, playerNoise - 38 * dt);
+                    }
+
+                    if(moveChainTime > 5.6){
+                        cutOffBeats = Math.max(cutOffBeats, 16);
+                        kitePressure = clamp(kitePressure + 0.02, 0, 4);
                     }
 
                     const curLvl = LEVELS[currentLevelIdx];
@@ -1945,6 +2028,10 @@
                         elNoiseBar.style.background = '#ff3b30';
                         elNoiseText.textContent = '[ ALERT ]';
                         elNoiseText.style.color = '#ff3b30';
+                    }else if(moveChainTime > 3.0){
+                        elNoiseBar.style.background = '#ff9f0a';
+                        elNoiseText.textContent = '[ RUNNING TOO LONG ]';
+                        elNoiseText.style.color = '#ff9f0a';
                     }else if(beatBuffTimer > 0){
                         elNoiseBar.style.background = '#00ffcc';
                         elNoiseText.textContent = '[ ON BEAT : SPEED+ / NOISE- ]';
@@ -2042,8 +2129,11 @@
                     }else if(sonarRevealTimer > 0){
                         targetOpacity = 0.55;
                         monster.material.wireframe = true;
+                    }else if(cutOffBeats > 0 || moveChainTime >= 3.6){
+                        targetOpacity = 0.28;
+                        monster.material.wireframe = false;
                     }else{
-                        targetOpacity = 0.07; // faint existence, so不是突然無中生有
+                        targetOpacity = 0.16;
                         monster.material.wireframe = true;
                     }
                     monster.material.opacity = targetOpacity;
