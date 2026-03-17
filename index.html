@@ -1,2425 +1,1031 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Wsido Xrtp ECHO - Readability Rework</title>
-    <style>
-        :root{
-            --cyan:#00ffcc;
-            --danger:#ff3b30;
-            --muted:#8a8a8a;
-            --bg:#000;
-        }
-        *{ box-sizing:border-box; }
-        body{
-            margin:0;
-            overflow:hidden;
-            background:#000;
-            color:var(--cyan);
-            font-family:"Courier New", monospace;
-        }
-        canvas{ display:block; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blind Beat - Tutorial / Stage Prototype</title>
+<style>
+    :root{
+        --bg:#000;
+        --fg:#e8eeff;
+        --sub:#8d99b8;
+        --good:#6df0ff;
+        --warn:#ff6b6b;
+        --gold:#ffcf66;
+    }
+    *{ box-sizing:border-box; }
+    html,body{
+        margin:0;
+        width:100%;
+        height:100%;
+        overflow:hidden;
+        background:#000;
+        color:var(--fg);
+        font-family:"Segoe UI","Noto Sans TC",sans-serif;
+    }
+    canvas{
+        display:block;
+        width:100vw;
+        height:100vh;
+        background:#000;
+        cursor:crosshair;
+    }
+    #overlay{
+        position:fixed;
+        inset:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        pointer-events:none;
+    }
+    #panel{
+        width:min(760px, calc(100vw - 32px));
+        background:rgba(0,0,0,0.58);
+        border:1px solid rgba(255,255,255,0.08);
+        border-radius:18px;
+        padding:22px 24px;
+        backdrop-filter:blur(8px);
+        box-shadow:0 0 50px rgba(255,255,255,0.04);
+        transition:opacity .25s ease;
+    }
+    #panel.hidden{ opacity:0; }
+    .title{
+        font-size:clamp(24px,4vw,42px);
+        font-weight:900;
+        letter-spacing:.08em;
+        margin-bottom:10px;
+    }
+    .desc{
+        color:var(--sub);
+        line-height:1.72;
+        font-size:15px;
+        white-space:pre-line;
+    }
+    .mode-box{
+        margin-top:16px;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:12px;
+    }
+    .mode{
+        border:1px solid rgba(255,255,255,0.08);
+        background:rgba(255,255,255,0.03);
+        border-radius:14px;
+        padding:14px;
+    }
+    .mode.active{
+        border-color:rgba(109,240,255,.45);
+        box-shadow:0 0 0 1px rgba(109,240,255,.15) inset;
+    }
+    .mode h3{
+        margin:0 0 8px 0;
+        font-size:16px;
+        color:#fff;
+    }
+    .mode p{
+        margin:0;
+        color:var(--sub);
+        line-height:1.6;
+        font-size:13px;
+    }
+    .hint{
+        margin-top:14px;
+        color:var(--good);
+        font-size:14px;
+        font-weight:700;
+    }
 
-        #ui-root{
-            position:fixed;
-            inset:0;
-            z-index:10;
-            pointer-events:none;
-        }
+    #hud{
+        position:fixed;
+        inset:0;
+        pointer-events:none;
+        padding:14px 16px;
+    }
+    .hud-top{
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:16px;
+    }
+    .hud-left, .hud-right{
+        background:rgba(0,0,0,0.28);
+        border:1px solid rgba(255,255,255,0.06);
+        border-radius:12px;
+        padding:10px 12px;
+        backdrop-filter:blur(6px);
+        line-height:1.5;
+        font-size:13px;
+        color:#c8d0e5;
+        min-width:220px;
+    }
+    .hud-right{ text-align:right; }
+    .label{ color:#8da1d1; }
+    .good{ color:var(--good); }
+    .warn{ color:var(--warn); }
+    .gold{ color:var(--gold); }
 
-        .overlay{
-            position:absolute;
-            inset:0;
-            display:flex;
-            flex-direction:column;
-            justify-content:center;
-            align-items:center;
-            background:rgba(0,0,0,0.96);
-            pointer-events:auto;
-            padding:24px;
-            text-align:center;
-        }
-
-        h1,h2,p{ margin:0; }
-
-        #screen-menu h1,
-        #transition-overlay h1,
-        #summary-overlay h1,
-        #pause-overlay h1{
-            color:var(--cyan);
-            text-shadow:0 0 16px rgba(0,255,204,.25);
-            margin-bottom:14px;
-        }
-
-        #controls-hint{
-            color:#bdbdbd;
-            line-height:1.8;
-            max-width:760px;
-            margin:14px 0 20px;
-            font-size:15px;
-        }
-
-        #legend-box{
-            margin-top:10px;
-            color:#bdbdbd;
-            line-height:1.7;
-            font-size:14px;
-            max-width:760px;
-        }
-
-        #death-reason{
-            display:none;
-            margin:12px 0 18px;
-            color:var(--danger);
-            font-weight:bold;
-            letter-spacing:1px;
-            font-size:16px;
-        }
-
-        #load-msg{
-            color:#8b8b8b;
-            margin-bottom:14px;
-        }
-
-        button{
-            pointer-events:auto;
-            border:1px solid var(--cyan);
-            background:transparent;
-            color:var(--cyan);
-            padding:14px 34px;
-            margin:8px;
-            cursor:pointer;
-            font-family:inherit;
-            font-size:16px;
-            transition:.15s ease;
-        }
-        button:hover{
-            background:var(--cyan);
-            color:#000;
-        }
-
-        #version-tag{
-            position:absolute;
-            right:12px;
-            bottom:10px;
-            font-size:12px;
-            color:#444;
-        }
-
-        #game-hud{
-            position:absolute;
-            top:18px;
-            left:18px;
-            display:none;
-            text-shadow:0 0 10px rgba(0,255,204,.22);
-            line-height:1.6;
-        }
-
-        #status-box{
-            position:absolute;
-            top:18px;
-            right:18px;
-            display:none;
-            text-align:right;
-            color:#ddd;
-            line-height:1.55;
-            font-size:15px;
-            text-shadow:0 0 10px rgba(255,255,255,.10);
-        }
-
-        #stage-indicator{
-            position:absolute;
-            top:18px;
-            left:50%;
-            transform:translateX(-50%);
-            display:none;
-            text-align:center;
-            color:#d8d8d8;
-            line-height:1.35;
-        }
-
-        #env-name{
-            display:block;
-            font-size:20px;
-            color:#fff;
-            font-weight:bold;
-            letter-spacing:2px;
-        }
-
-        #threat-class{
-            display:block;
-            font-size:13px;
-            margin-top:4px;
-            font-weight:bold;
-        }
-
-        #msg-box{
-            position:absolute;
-            bottom:18%;
-            width:100%;
-            text-align:center;
-            font-size:24px;
-            color:#fff;
-            display:none;
-            pointer-events:none;
-            text-shadow:0 0 16px rgba(255,255,255,.2);
-            padding:0 20px;
-        }
-
-        #noise-ui{
-            position:absolute;
-            left:50%;
-            bottom:26px;
-            transform:translateX(-50%);
-            width:360px;
-            display:none;
-            text-align:center;
-            color:#aaa;
-            font-size:13px;
-            font-weight:bold;
-        }
-
-        #noise-text{
-            min-height:20px;
-            margin-bottom:6px;
-            letter-spacing:.5px;
-        }
-
-        #noise-bar-bg{
-            width:100%;
-            height:8px;
-            background:#1a1a1a;
-            border:1px solid #404040;
-            overflow:hidden;
-        }
-
-        #noise-bar{
-            width:0%;
-            height:100%;
-            background:#fff;
-            transition:width .08s linear, background .08s linear;
-        }
-
-        .stats-text{
-            color:#efefef;
-            line-height:1.9;
-            margin:16px 0 20px;
-            font-size:16px;
-            max-width:720px;
-        }
-
-        #edge-warning{
-            position:absolute;
-            inset:0;
-            pointer-events:none;
-            opacity:0;
-            transition:opacity .08s linear;
-            background:
-                radial-gradient(circle at left center, rgba(255,59,48,.35), transparent 28%),
-                radial-gradient(circle at right center, rgba(255,59,48,.35), transparent 28%),
-                radial-gradient(circle at center top, rgba(255,59,48,.18), transparent 25%),
-                radial-gradient(circle at center bottom, rgba(255,59,48,.18), transparent 25%);
-            mix-blend-mode:screen;
-        }
-
-        #crosshair{
-            position:absolute;
-            left:50%;
-            top:50%;
-            transform:translate(-50%,-50%);
-            width:10px;
-            height:10px;
-            border:1px solid rgba(255,255,255,.16);
-            border-radius:50%;
-            display:none;
-        }
-
-        #beat-ring{
-            position:absolute;
-            left:50%;
-            top:50%;
-            transform:translate(-50%,-50%) scale(1);
-            width:42px;
-            height:42px;
-            border:2px solid rgba(0,255,204,.18);
-            border-radius:50%;
-            display:none;
-            pointer-events:none;
-            box-shadow:0 0 0 rgba(0,255,204,0);
-            mix-blend-mode:screen;
-        }
-
-        #timing-judge{
-            position:absolute;
-            left:50%;
-            top:calc(50% + 34px);
-            transform:translateX(-50%);
-            display:none;
-            pointer-events:none;
-            font-size:12px;
-            font-weight:bold;
-            letter-spacing:1.5px;
-            color:#00ffcc;
-            text-shadow:0 0 10px rgba(0,255,204,.25);
-        }
-
-        .small-note{
-            color:#8c8c8c;
-            font-size:13px;
-            margin-top:4px;
-        }
-    </style>
+    #centerText{
+        position:fixed;
+        left:50%;
+        top:78%;
+        transform:translate(-50%, -50%);
+        min-width:280px;
+        text-align:center;
+        letter-spacing:.14em;
+        font-size:14px;
+        color:rgba(235,242,255,0.88);
+        text-shadow:0 0 8px rgba(255,255,255,0.14);
+        pointer-events:none;
+    }
+    #debugBadge{
+        position:fixed;
+        left:16px;
+        bottom:16px;
+        background:rgba(0,0,0,.3);
+        border:1px solid rgba(255,255,255,.08);
+        color:#9ab2ff;
+        padding:8px 10px;
+        border-radius:10px;
+        font-size:12px;
+        pointer-events:none;
+        opacity:0;
+        transition:opacity .18s ease;
+    }
+    #debugBadge.show{ opacity:1; }
+</style>
 </head>
 <body>
-    <div id="ui-root">
-        <div id="screen-menu" class="overlay">
-            <h1 id="title-text">WSIDO XRTP ECHO: SOUND CELL</h1>
+<canvas id="game"></canvas>
 
-            <div id="controls-hint">
-                <b>[ 操作 ]</b><br>
-                WASD：移動　|　SHIFT：衝刺（很吵）　|　滑鼠：視角　|　ESC：暫停<br>
-                <b>[ 目標 ]</b><br>
-                收集 3 個音軌碎片 → 開啟青色傳送門 → 進門通關<br>
-                <b>[ 重點 ]</b><br>
-                重拍會短暫揭露怪物位置。踩中拍移動會 <span style="color:#00ffcc">更快、且更安靜</span>，但<span style="color:#ff3b30">不是無敵</span>。
+<div id="overlay">
+    <div id="panel">
+        <div class="title">BLIND BEAT</div>
+        <div class="desc">你看不見世界。
+只有節拍、方向、腳步，和越來越靠近的危險。
+
+操作：
+• 點擊畫面開始並鎖定滑鼠
+• 滑鼠左右：轉向（只能水平 360°）
+• W A S D：移動
+• Shift：衝刺（更快，但更吵）
+• 1 / 2：切換模式
+• R：重開
+• F2：開發測試地圖
+
+規則：
+• 教學關可保留 BPM 輔助
+• 正式關只保留音樂與方向聲，不再顯示顯性 BPM 提示
+• 你必須靠拍子與方向引導找到出口</div>
+
+        <div class="mode-box">
+            <div class="mode active" id="tutorialCard">
+                <h3>1｜Tutorial</h3>
+                <p>保留 BPM 輔助。會給你較明顯的節拍提示與教學回饋，適合練手感。</p>
             </div>
-
-            <div id="legend-box">
-                <b style="color:#ff3b30">紅色</b>＝危險（Alert / CHARGE / DASH / 極近距離）<br>
-                <b style="color:#00ffcc">青色</b>＝有利資訊（ON BEAT / 傳送門 / 成功收集 / 可撤離）<br>
-                這版沒有倒數時間。你可以繞、躲、拉扯，但腳步太大聲還是會把牠惹毛。
+            <div class="mode" id="stageCard">
+                <h3>2｜Stage</h3>
+                <p>有音樂，但不再額外顯示 BPM 輔助。你只能靠音樂、方向聲與移動手感活下來。</p>
             </div>
-
-            <p id="load-msg">正在同步音訊緩衝區…</p>
-            <div id="death-reason"></div>
-
-            <div id="btn-group" style="display:none;">
-                <button id="btn-tutorial">教學協議</button>
-                <button id="btn-start">啟動序列修復 (START)</button>
-            </div>
-
-            <div id="version-tag">Rework Build v3 - anti-kite + corner slide</div>
         </div>
 
-        <div id="transition-overlay" class="overlay" style="display:none;">
-            <h1 id="trans-title">SECTOR CLEAR</h1>
-            <p class="stats-text" id="trans-stats"></p>
-            <button id="btn-next-stage">進入下一區域 (NEXT)</button>
-        </div>
-
-        <div id="summary-overlay" class="overlay" style="display:none;">
-            <h1>PROTOCOL COMPLETE</h1>
-            <p class="stats-text" id="final-stats"></p>
-            <button id="btn-return-menu">返回主系統 (MENU)</button>
-        </div>
-
-        <div id="pause-overlay" class="overlay" style="display:none;">
-            <h1 style="color:#ff3b30;">系統掛起 (PAUSED)</h1>
-            <p class="stats-text">ESC 或按下按鈕繼續。</p>
-            <button id="btn-resume">恢復連結</button>
-        </div>
-
-        <div id="stage-indicator">
-            <span id="env-name">SECTOR</span>
-            <span id="threat-class">THREAT: HUNTER</span>
-            <div class="small-note" id="assist-note">ASSIST: ON</div>
-        </div>
-
-        <div id="game-hud">
-            <b>[ 任務狀態 ]</b><br>
-            DRUMS: <span style="color:#fff">ON</span> |
-            BASS: <span id="s1" style="color:#333;">MISS</span> |
-            SYNTH: <span id="s2" style="color:#333;">MISS</span> |
-            TEXTURE: <span id="s3" style="color:#333;">MISS</span><br>
-            OBJECTIVE: <span id="objective-text">COLLECT 3 FRAGMENTS</span>
-        </div>
-
-        <div id="status-box">
-            <div id="status-main">SEARCHING…</div>
-            <div id="status-sub" class="small-note">怪物一直存在，紅色代表更危險。</div>
-        </div>
-
-        <div id="noise-ui">
-            <div id="noise-text">[ NOISE LEVEL ]</div>
-            <div id="noise-bar-bg"><div id="noise-bar"></div></div>
-        </div>
-
-        <div id="msg-box"></div>
-        <div id="edge-warning"></div>
-        <div id="crosshair"></div>
-        <div id="beat-ring"></div>
-        <div id="timing-judge"></div>
+        <div class="hint">按 1 或 2 選模式，再點擊畫面開始</div>
     </div>
+</div>
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+<div id="hud">
+    <div class="hud-top">
+        <div class="hud-left" id="hudLeft">等待啟動...</div>
+        <div class="hud-right" id="hudRight">音訊：未啟動</div>
+    </div>
+</div>
+
+<div id="centerText"></div>
+<div id="debugBadge">DEBUG MAP: ON</div>
+
+<script>
+(() => {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const overlay = document.getElementById('overlay');
+    const panel = document.getElementById('panel');
+    const tutorialCard = document.getElementById('tutorialCard');
+    const stageCard = document.getElementById('stageCard');
+    const hudLeft = document.getElementById('hudLeft');
+    const hudRight = document.getElementById('hudRight');
+    const centerText = document.getElementById('centerText');
+    const debugBadge = document.getElementById('debugBadge');
+
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+    let DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+    function resize() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(W * DPR);
+        canvas.height = Math.floor(H * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const TAU = Math.PI * 2;
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+
+    function normAngle(a) {
+        while (a > Math.PI) a -= TAU;
+        while (a < -Math.PI) a += TAU;
+        return a;
+    }
+
+    function randRange(a, b) {
+        return a + Math.random() * (b - a);
+    }
+
+    const game = {
+        state: 'idle',         // idle, playing, win, dead
+        mode: 'tutorial',      // tutorial, stage
+        started: false,
+        showDebug: false,
+
+        time: 0,
+        lastFrame: 0,
+
+        bpm: 104,
+        beatInterval: 60 / 104,
+        beatWindow: 0.11,
+        audioStartedAt: 0,
+        nextBeatTime: 0,
+        beatIndex: 0,
+
+        worldRadius: 1200,
+        goalRadius: 55,
+
+        beatFlash: 0,
+        successPulse: 0,
+        winPulse: 0,
+        deadPulse: 0,
+        threat: 0,
+
+        message: '點擊開始',
+        guideText: '',
+        lastGuideText: 0,
+
+        player: {
+            x: 0,
+            y: 0,
+            yaw: 0,
+            speed: 0
+        },
+
+        goal: {
+            x: 0,
+            y: 0
+        }
+    };
+
+    const input = {
+        keys: new Set(),
+        locked: false
+    };
+
+    let audio = null;
+    let schedulerTimer = null;
+
+    function updateModeUI() {
+        tutorialCard.classList.toggle('active', game.mode === 'tutorial');
+        stageCard.classList.toggle('active', game.mode === 'stage');
+    }
+
+    function spawnGoal() {
+        const angle = randRange(0, TAU);
+        const radius = randRange(720, 960);
+        game.goal.x = Math.cos(angle) * radius;
+        game.goal.y = Math.sin(angle) * radius;
+    }
+
+    function resetWorld() {
+        game.state = 'playing';
+        game.time = 0;
+        game.lastFrame = performance.now() / 1000;
+        game.beatFlash = 0;
+        game.successPulse = 0;
+        game.winPulse = 0;
+        game.deadPulse = 0;
+        game.threat = 0;
+        game.message = game.mode === 'tutorial' ? '跟著拍子走' : '聽音樂活下來';
+        game.guideText = '';
+        game.lastGuideText = 0;
+
+        game.player.x = 0;
+        game.player.y = 0;
+        game.player.yaw = 0;
+        game.player.speed = 0;
+
+        spawnGoal();
+
+        if (audio) {
+            const now = audio.ctx.currentTime;
+            game.audioStartedAt = now + 0.08;
+            game.nextBeatTime = game.audioStartedAt;
+            game.beatIndex = 0;
         }
     }
-    </script>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    function createAudio() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // =========================
-        // 1) Core constants
-        // =========================
-        const STATE = {
-            MENU:'menu',
-            TUTORIAL:'tutorial',
-            GAME:'game',
-            WIN:'win',
-            TRANSITION:'transition',
-            SUMMARY:'summary'
+        const master = ctx.createGain();
+        master.gain.value = 0.8;
+        master.connect(ctx.destination);
+
+        const musicBus = ctx.createGain();
+        musicBus.gain.value = 0.55;
+        musicBus.connect(master);
+
+        const sfxBus = ctx.createGain();
+        sfxBus.gain.value = 0.9;
+        sfxBus.connect(master);
+
+        const ambientBus = ctx.createGain();
+        ambientBus.gain.value = 0.05;
+        ambientBus.connect(master);
+
+        // 低頻底噪
+        const hum = ctx.createOscillator();
+        const humGain = ctx.createGain();
+        hum.type = 'sine';
+        hum.frequency.value = 41;
+        humGain.gain.value = 0.02;
+        hum.connect(humGain);
+        humGain.connect(ambientBus);
+        hum.start();
+
+        return {
+            ctx,
+            master,
+            musicBus,
+            sfxBus,
+            ambientBus,
+            hum
         };
+    }
 
-        const AI_STATE = {
-            HUNT:'hunt',
-            CHARGE:'charge',
-            DASH:'dash',
-            RECOVER:'recover'
-        };
+    function ensureAudio() {
+        if (!audio) audio = createAudio();
+        if (audio.ctx.state === 'suspended') audio.ctx.resume();
 
-        const DEATH_REASON = {
-            CONTACT:'CLOSE CONTACT',
-            ALERT_CHASE:'ALERT CHASE',
-            DASH_HIT:'PHASE DASH',
-            TRAPPED:'TRAPPED / CORNERED'
-        };
+        if (!schedulerTimer) {
+            schedulerTimer = setInterval(audioScheduler, 25);
+        }
+    }
 
-        const BPM = 175;
-        const BEAT_INT = 60 / BPM;
-        const BEAT_OFFSET = 0.035;
-        const ASSIST_EVERY_N_BEATS = 2;
-        const ASSIST_PHASE = 0;
+    function makeStereoNode() {
+        if (!audio) return null;
+        if (audio.ctx.createStereoPanner) {
+            return audio.ctx.createStereoPanner();
+        }
+        return audio.ctx.createGain();
+    }
 
-        const ON_BEAT_WINDOW = 0.10;
-        const PERFECT_BEAT_WINDOW = 0.045;
-        const ON_BEAT_SPEED_MULT = 1.18;
-        const ON_BEAT_BUFF_TIME = 0.18;
-        const ON_BEAT_NOISE_MULT = 0.38;
+    function connectPan(node, value) {
+        if (!node) return;
+        if ('pan' in node) node.pan.value = clamp(value, -1, 1);
+    }
 
-        const GRID_SIZE = 6;
-        const WALL_VISUAL_SIZE = 5.2;
-        const WALL_COLLIDER_HALF = WALL_VISUAL_SIZE * 0.5 - 0.18;
-        const WALL_CORNER_RADIUS = 0.0;
-        const PLAYER_RADIUS = 0.72;
-        const COLLISION_EPS = 0.02;
-        const PLAYER_PUSH_ITERS = 6;
-        const KITE_TRAIL_LENGTH = 18;
-        const KITE_REPEAT_TRIGGER = 3;
-        const KITE_LOCK_BEATS = 14;
-        const KITE_LOOKAHEAD = 5;
+    function playOscBurst({ when, freq = 440, type = 'sine', attack = 0.005, decay = 0.12, gain = 0.08, pan = 0, bus = null, sweepTo = null }) {
+        if (!audio) return;
+        const osc = audio.ctx.createOscillator();
+        const g = audio.ctx.createGain();
+        const p = makeStereoNode();
 
-        const STEM_COLORS = {
-            1:0x00aaff,  // bass
-            2:0xcc55ff,  // synth
-            3:0xffffff   // texture
-        };
-        const STEM_UNLOCK_ORDER = ['BASS', 'SYNTH', 'TEXTURE'];
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, when);
+        if (sweepTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1, sweepTo), when + decay);
 
-        const stemFiles = [
-            '0 Drums.mp3',
-            '1 Bass.mp3',
-            '2 Synth.mp3',
-            '3 Other.mp3',
-            'EEEEERORR.mp3'
-        ];
+        g.gain.setValueAtTime(0.0001, when);
+        g.gain.exponentialRampToValueAtTime(gain, when + attack);
+        g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
 
-        // Threat classes tuned for 175 BPM with breathing room
-        const MONSTER_TYPES = {
-            hunter: {
-                name:'HUNTER',
-                color:0xff3b30,
-                base:1,
-                end:2,
-                dash:3,
-                chargeFreq:12,
-                alertFreq:6,
-                moveEvery:2,
-                alertMoveEvery:1,
-                alertBonus:1,
-                lethalDist:1.55,
-                dashLethalDist:2.15
-            },
-            stalker: {
-                name:'STALKER',
-                color:0xaa4dff,
-                base:1,
-                end:2,
-                dash:2,
-                chargeFreq:14,
-                alertFreq:12,
-                moveEvery:2,
-                alertMoveEvery:1,
-                alertBonus:2,
-                lethalDist:1.55,
-                dashLethalDist:2.0
-            },
-            rusher: {
-                name:'RUSHER',
-                color:0xff7a1a,
-                base:1,
-                end:1,
-                dash:4,
-                chargeFreq:8,
-                alertFreq:4,
-                moveEvery:1,
-                alertMoveEvery:1,
-                alertBonus:1,
-                lethalDist:1.5,
-                dashLethalDist:2.35
-            }
-        };
+        osc.connect(g);
+        g.connect(p);
+        p.connect(bus || audio.sfxBus);
+        connectPan(p, pan);
 
-        // Stage 1/2 keep assist on so新玩家能學會；Stage 3 才完全斷提示
-        const LEVELS = [
-            {
-                w:17, h:17,
-                envName:'CALIBRATION SECTOR',
-                mType:'hunter',
-                fog:0x06141a,
-                flash:0x00ffff,
-                beatAssist:true,
-                alertHigh:56,
-                alertLow:26,
-                rooms:2,
-                loops:5,
-                grace:3.5
-            },
-            {
-                w:21, h:21,
-                envName:'LATENCY SECTOR',
-                mType:'stalker',
-                fog:0x120616,
-                flash:0xbb66ff,
-                beatAssist:true,
-                alertHigh:48,
-                alertLow:22,
-                rooms:3,
-                loops:8,
-                grace:3.0
-            },
-            {
-                w:25, h:25,
-                envName:'COLLAPSE SECTOR',
-                mType:'rusher',
-                fog:0x1d0704,
-                flash:0xff5b2e,
-                beatAssist:false,
-                alertHigh:42,
-                alertLow:18,
-                rooms:4,
-                loops:11,
-                grace:2.5
-            }
-        ];
+        osc.start(when);
+        osc.stop(when + decay + 0.03);
+    }
 
-        // =========================
-        // 2) Runtime state
-        // =========================
-        let currentStatus = STATE.MENU;
-        let monsterStatus = AI_STATE.HUNT;
-        let currentLevelIdx = 0;
-        let activeMonsterDef = MONSTER_TYPES.hunter;
-
-        let isPaused = false;
-        let isTransitioning = false;
-        let suppressUnlockPause = false;
-
-        let gameStats = {
-            totalTime:0,
-            alerts:0,
-            deaths:0
-        };
-
-        let countdown = 0; // no timeout now, kept unused intentionally
-        let notesCollected = 0;
-        let currentCollectedIds = new Set();
-        let unlockedStemLevel = 0;
-
-        let nextBeatTime = 0;
-        let beatCount = 0;
-        let musicStartAbsTime = 0;
-
-        let graceTimer = 0;
-        let sonarRevealTimer = 0;
-        let beatBuffTimer = 0;
-        let lastPlayedBeatTime = -999;
-        let lastRewardedAssistBeatId = -999;
-        let screenShake = 0;
-        let msgTimer = null;
-        let aiTimer = 0;
-        let victoryTimer = 0;
-        let tutorialTimer = -1;
-
-        let beatAssistEnabled = false;
-        let playerNoise = 0;
-        let isAlertActive = false;
-        let timingJudgeTimer = 0;
-        let lastMoveJudgeBeatId = -999;
-        let wasTryingToMoveLastFrame = false;
-        let playerBeatTrail = [];
-        let kitePressure = 0;
-        let cutOffBeats = 0;
-        let moveChainTime = 0;
-        let syncCollapse = 0;
-        let infoClarity = 0.58;
-        let sprintTime = 0;
-        let stillListenTime = 0;
-        let scanPulse = 0;
-        let scanPulseStrength = 0;
-        let scanPulseClarity = 0.58;
-
-        let lastSafePlayerPos = new THREE.Vector3();
-
-        let mazeGrid = [];
-        let mazeW = 17;
-        let mazeH = 17;
-
-        let particles = [];
-        let walls = [];
-        let noteCubes = [];
-
-        // audio
-        let audioCtx = null;
-        let analyser = null;
-        let dataArray = null;
-        let audioLoadPromise = null;
-        let stems = [];
-        let threatGain = null;
-        let threatPanner = null;
-
-        // controls / temp vectors
-        const keys = {};
-        const clock = new THREE.Clock();
-        const _oldPos = new THREE.Vector3();
-        const _renderPos = new THREE.Vector3();
-        const _forward = new THREE.Vector3();
-        const _right = new THREE.Vector3();
-        const _up = new THREE.Vector3(0,1,0);
-        const _targetColor = new THREE.Color();
-        const _tmpVec = new THREE.Vector3();
-
-        // =========================
-        // 3) Scene
-        // =========================
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000);
-        scene.fog = new THREE.FogExp2(0x000000, 0.095);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1400);
-        const renderer = new THREE.WebGLRenderer({ antialias:true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.body.appendChild(renderer.domElement);
-
-        const controls = new PointerLockControls(camera, document.body);
-
-        const ambient = new THREE.AmbientLight(0x101010, 1.2);
-        scene.add(ambient);
-
-        const flashLight = new THREE.PointLight(0xffffff, 0, 26);
-        scene.add(flashLight);
-
-        const floor = new THREE.Mesh(
-            new THREE.PlaneGeometry(900, 900),
-            new THREE.MeshStandardMaterial({
-                color:0x050505,
-                roughness:1
-            })
-        );
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
-
-        const wallGeo = new THREE.BoxGeometry(WALL_VISUAL_SIZE, 6, WALL_VISUAL_SIZE);
-        const wallMat = new THREE.MeshStandardMaterial({
-            color:0x111111,
-            roughness:0.92,
-            metalness:0.02
+    function scheduleKick(when) {
+        playOscBurst({
+            when,
+            freq: 120,
+            type: 'triangle',
+            gain: 0.11,
+            decay: 0.12,
+            sweepTo: 42,
+            bus: audio.musicBus
         });
-
-        const noteGeo = new THREE.OctahedronGeometry(0.9);
-        const partGeo = new THREE.BoxGeometry(0.12,0.12,0.12);
-
-        const monster = new THREE.Mesh(
-            new THREE.BoxGeometry(1.6, 4.2, 1.6),
-            new THREE.MeshBasicMaterial({
-                color:0xff3b30,
-                transparent:true,
-                opacity:0,
-                wireframe:true
-            })
-        );
-        monster.visible = false;
-        scene.add(monster);
-
-        const chargeRing = new THREE.Mesh(
-            new THREE.RingGeometry(2.3, 2.6, 48),
-            new THREE.MeshBasicMaterial({
-                color:0xff3b30,
-                transparent:true,
-                opacity:0,
-                side:THREE.DoubleSide
-            })
-        );
-        chargeRing.rotation.x = -Math.PI / 2;
-        chargeRing.visible = false;
-        scene.add(chargeRing);
-
-        const portal = new THREE.Mesh(
-            new THREE.TorusGeometry(2.1, 0.22, 16, 100),
-            new THREE.MeshBasicMaterial({
-                color:0x00ffcc
-            })
-        );
-        portal.visible = false;
-        scene.add(portal);
-
-        const portalGlow = new THREE.PointLight(0x00ffcc, 0, 20);
-        portalGlow.visible = false;
-        scene.add(portalGlow);
-
-        // =========================
-        // 4) DOM refs
-        // =========================
-        const elMenu = document.getElementById('screen-menu');
-        const elPause = document.getElementById('pause-overlay');
-        const elTransition = document.getElementById('transition-overlay');
-        const elSummary = document.getElementById('summary-overlay');
-
-        const elTitle = document.getElementById('title-text');
-        const elLoadMsg = document.getElementById('load-msg');
-        const elBtnGroup = document.getElementById('btn-group');
-        const elDeathReason = document.getElementById('death-reason');
-
-        const elGameHUD = document.getElementById('game-hud');
-        const elStageIndicator = document.getElementById('stage-indicator');
-        const elEnvName = document.getElementById('env-name');
-        const elThreatClass = document.getElementById('threat-class');
-        const elAssistNote = document.getElementById('assist-note');
-        const elObjective = document.getElementById('objective-text');
-
-        const elStatusBox = document.getElementById('status-box');
-        const elStatusMain = document.getElementById('status-main');
-        const elStatusSub = document.getElementById('status-sub');
-
-        const elNoiseUI = document.getElementById('noise-ui');
-        const elNoiseText = document.getElementById('noise-text');
-        const elNoiseBar = document.getElementById('noise-bar');
-
-        const elMsg = document.getElementById('msg-box');
-        const elEdgeWarning = document.getElementById('edge-warning');
-        const elCrosshair = document.getElementById('crosshair');
-        const elBeatRing = document.getElementById('beat-ring');
-        const elTimingJudge = document.getElementById('timing-judge');
-
-        const elS1 = document.getElementById('s1');
-        const elS2 = document.getElementById('s2');
-        const elS3 = document.getElementById('s3');
-
-        const elTransTitle = document.getElementById('trans-title');
-        const elTransStats = document.getElementById('trans-stats');
-        const elFinalStats = document.getElementById('final-stats');
-
-        // =========================
-        // 5) Utility
-        // =========================
-        function clamp(v, min, max){
-            return Math.max(min, Math.min(max, v));
-        }
-
-        function lerp(a,b,t){
-            return a + (b-a) * t;
-        }
-
-        function setTimingJudge(label, color){
-            timingJudgeTimer = 0.24;
-            elTimingJudge.textContent = label;
-            elTimingJudge.style.color = color;
-            elTimingJudge.style.display = 'block';
-        }
-
-        function getTimingJudgeLabel(timeToNearest){
-            if(timeToNearest <= PERFECT_BEAT_WINDOW){
-                return { label:'PERFECT', color:'#00ffcc' };
-            }
-            if(timeToNearest <= ON_BEAT_WINDOW){
-                return { label:'ON BEAT', color:'#8affea' };
-            }
-            return { label:'OFF BEAT', color:'#ff9b7f' };
-        }
-
-        function showMsg(txt, dur = 1800){
-            elMsg.textContent = txt;
-            elMsg.style.display = 'block';
-            if (msgTimer) clearTimeout(msgTimer);
-            msgTimer = setTimeout(() => {
-                if (elMsg.textContent === txt) elMsg.style.display = 'none';
-                msgTimer = null;
-            }, dur);
-        }
-
-        function clearTransientUI(){
-            if (msgTimer) clearTimeout(msgTimer);
-            msgTimer = null;
-            elMsg.style.display = 'none';
-            elMsg.textContent = '';
-            elDeathReason.style.display = 'none';
-            elDeathReason.textContent = '';
-            elTimingJudge.style.display = 'none';
-            timingJudgeTimer = 0;
-        }
-
-        function hideAllOverlays(){
-            elMenu.style.display = 'none';
-            elPause.style.display = 'none';
-            elTransition.style.display = 'none';
-            elSummary.style.display = 'none';
-        }
-
-        function resetMenuScene(){
-            clearMaze();
-            portal.visible = false;
-            portalGlow.visible = false;
-            monster.visible = false;
-            chargeRing.visible = false;
-            scene.fog.color.setHex(0x000000);
-            scene.background.copy(scene.fog.color);
-            flashLight.color.setHex(0xffffff);
-            flashLight.intensity = 0;
-            elEdgeWarning.style.opacity = '0';
-            elCrosshair.style.display = 'none';
-        }
-
-        function setPaused(p){
-            isPaused = p;
-            elPause.style.display = p ? 'flex' : 'none';
-        }
-
-        function programmaticUnlock(){
-            if (!controls.isLocked) return;
-            suppressUnlockPause = true;
-            controls.unlock();
-        }
-
-        function isAudioReady(){
-            return audioCtx && stems.length === stemFiles.length;
-        }
-
-        function worldX(cellX){
-            return cellX * GRID_SIZE - (mazeW * 3);
-        }
-
-        function worldZ(cellZ){
-            return cellZ * GRID_SIZE - (mazeH * 3);
-        }
-
-        function worldToCell(pos){
-            return {
-                x: clamp(Math.floor((pos.x + mazeW * 3 + GRID_SIZE * 0.5) / GRID_SIZE), 0, mazeW - 1),
-                z: clamp(Math.floor((pos.z + mazeH * 3 + GRID_SIZE * 0.5) / GRID_SIZE), 0, mazeH - 1)
-            };
-        }
-
-        function seededRandom(seed){
-            return function(){
-                let t = seed += 0x6D2B79F5;
-                t = Math.imul(t ^ (t >>> 15), t | 1);
-                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-            };
-        }
-
-        function shuffle(arr, rnd = Math.random){
-            for(let i = arr.length - 1; i > 0; i--){
-                const j = Math.floor(rnd() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
-        }
-
-        function getDistanceMap(grid, startX, startZ){
-            const map = Array.from({ length:grid.length }, () =>
-                Array(grid[0].length).fill(-1)
-            );
-            const queue = [[startX, startZ, 0]];
-            map[startZ][startX] = 0;
-
-            while(queue.length){
-                const [cx, cz, d] = queue.shift();
-                for(const [dx, dz] of [[0,1],[0,-1],[1,0],[-1,0]]){
-                    const nx = cx + dx;
-                    const nz = cz + dz;
-                    if(
-                        nz >= 0 && nz < grid.length &&
-                        nx >= 0 && nx < grid[0].length &&
-                        grid[nz][nx] === 0 &&
-                        map[nz][nx] === -1
-                    ){
-                        map[nz][nx] = d + 1;
-                        queue.push([nx, nz, d + 1]);
-                    }
-                }
-            }
-            return map;
-        }
-
-        function getOpenReachableCells(){
-            const distMap = getDistanceMap(mazeGrid, 1, 1);
-            const cells = [];
-            for(let z=0; z<mazeH; z++){
-                for(let x=0; x<mazeW; x++){
-                    if(mazeGrid[z][x] === 0 && distMap[z][x] >= 0 && !(x === 1 && z === 1)){
-                        cells.push({ x, z, d: distMap[z][x] });
-                    }
-                }
-            }
-            cells.sort((a,b) => a.d - b.d);
-            return cells;
-        }
-
-        // =========================
-        // 6) Maze generation
-        // =========================
-        function carveRoom(grid, x, z, w, h){
-            for(let rz = z; rz < z + h; rz++){
-                for(let rx = x; rx < x + w; rx++){
-                    if(
-                        rz > 0 && rz < grid.length - 1 &&
-                        rx > 0 && rx < grid[0].length - 1
-                    ){
-                        grid[rz][rx] = 0;
-                    }
-                }
-            }
-        }
-
-        function generateMaze(w, h, rnd, roomCount = 2, loopCount = 10){
-            if (w % 2 === 0) w += 1;
-            if (h % 2 === 0) h += 1;
-
-            const grid = Array.from({ length:h }, () => Array(w).fill(1));
-
-            function carveDFS(x, y){
-                grid[y][x] = 0;
-                const dirs = shuffle([[0,2],[0,-2],[2,0],[-2,0]], rnd);
-                for(const [dx, dy] of dirs){
-                    const nx = x + dx;
-                    const ny = y + dy;
-                    if(nx > 0 && nx < w - 1 && ny > 0 && ny < h - 1 && grid[ny][nx] === 1){
-                        grid[y + dy / 2][x + dx / 2] = 0;
-                        carveDFS(nx, ny);
-                    }
-                }
-            }
-
-            carveDFS(1, 1);
-
-            // carve rooms
-            for(let i=0; i<roomCount; i++){
-                const rw = rnd() < 0.5 ? 3 : 5;
-                const rh = rnd() < 0.5 ? 3 : 5;
-                const rx = 1 + Math.floor(rnd() * ((w - rw - 2) / 2)) * 2;
-                const rz = 1 + Math.floor(rnd() * ((h - rh - 2) / 2)) * 2;
-                carveRoom(grid, rx, rz, rw, rh);
-            }
-
-            // carve loops
-            let tries = loopCount * 8;
-            while(loopCount > 0 && tries-- > 0){
-                const x = 1 + Math.floor(rnd() * (w - 2));
-                const z = 1 + Math.floor(rnd() * (h - 2));
-                if(grid[z][x] !== 1) continue;
-
-                const horiz = x > 0 && x < w - 1 && grid[z][x - 1] === 0 && grid[z][x + 1] === 0;
-                const vert  = z > 0 && z < h - 1 && grid[z - 1][x] === 0 && grid[z + 1][x] === 0;
-
-                if(horiz || vert){
-                    grid[z][x] = 0;
-                    loopCount--;
-                }
-            }
-
-            // ensure spawn pocket
-            grid[1][1] = 0;
-            grid[1][2] = 0;
-            grid[2][1] = 0;
-
-            return grid;
-        }
-
-        function buildMazeMeshes(){
-            clearMaze();
-            for(let z=0; z<mazeH; z++){
-                for(let x=0; x<mazeW; x++){
-                    if(mazeGrid[z][x] === 1){
-                        const wall = new THREE.Mesh(wallGeo, wallMat);
-                        wall.position.set(worldX(x), 3, worldZ(z));
-                        scene.add(wall);
-                        walls.push(wall);
-                    }
-                }
-            }
-        }
-
-        function clearMaze(){
-            for(const w of walls) scene.remove(w);
-            for(const n of noteCubes){
-                if (n.material) n.material.dispose();
-                scene.remove(n);
-            }
-            walls.length = 0;
-            noteCubes.length = 0;
-        }
-
-        // =========================
-        // 7) Collision / movement
-        // =========================
-        function roundedWallSDF(px, pz, wx, wz, radiusInflate = PLAYER_RADIUS + COLLISION_EPS){
-            const half = WALL_COLLIDER_HALF;
-            const minX = wx - half;
-            const maxX = wx + half;
-            const minZ = wz - half;
-            const maxZ = wz + half;
-            const cx = clamp(px, minX, maxX);
-            const cz = clamp(pz, minZ, maxZ);
-            return Math.hypot(px - cx, pz - cz) - radiusInflate;
-        }
-
-        function getRoundedWallNormal(px, pz, wx, wz, radiusInflate = PLAYER_RADIUS + COLLISION_EPS){
-            const half = WALL_COLLIDER_HALF;
-            const minX = wx - half;
-            const maxX = wx + half;
-            const minZ = wz - half;
-            const maxZ = wz + half;
-            const cx = clamp(px, minX, maxX);
-            const cz = clamp(pz, minZ, maxZ);
-
-            let dx = px - cx;
-            let dz = pz - cz;
-            let len = Math.hypot(dx, dz);
-
-            if(len > 1e-6){
-                return { x: dx / len, z: dz / len };
-            }
-
-            const offX = px - wx;
-            const offZ = pz - wz;
-            const penX = (half + radiusInflate) - Math.abs(offX);
-            const penZ = (half + radiusInflate) - Math.abs(offZ);
-
-            if(penX < penZ){
-                return { x: offX >= 0 ? 1 : -1, z: 0 };
-            }
-            return { x: 0, z: offZ >= 0 ? 1 : -1 };
-        }
-
-        function circleIntersectsWall(px, pz, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
-            const half = WALL_COLLIDER_HALF;
-            const cx = clamp(px, wx - half, wx + half);
-            const cz = clamp(pz, wz - half, wz + half);
-            const dx = px - cx;
-            const dz = pz - cz;
-            return (dx * dx + dz * dz) < (radius * radius);
-        }
-
-        function pushOutFromRoundedWall(pos, wx, wz, radius = PLAYER_RADIUS + COLLISION_EPS){
-            const half = WALL_COLLIDER_HALF;
-            const cx = clamp(pos.x, wx - half, wx + half);
-            const cz = clamp(pos.z, wz - half, wz + half);
-            let dx = pos.x - cx;
-            let dz = pos.z - cz;
-            let distSq = dx * dx + dz * dz;
-            const radiusSq = radius * radius;
-
-            if(distSq >= radiusSq) return false;
-
-            let nx = 0;
-            let nz = 0;
-            let push = 0;
-
-            if(distSq > 1e-8){
-                const dist = Math.sqrt(distSq);
-                nx = dx / dist;
-                nz = dz / dist;
-                push = radius - dist + COLLISION_EPS;
-            }else{
-                const offX = pos.x - wx;
-                const offZ = pos.z - wz;
-                const penX = (half + radius) - Math.abs(offX);
-                const penZ = (half + radius) - Math.abs(offZ);
-
-                if(penX < penZ){
-                    nx = offX >= 0 ? 1 : -1;
-                    nz = 0;
-                    push = penX + COLLISION_EPS;
-                }else{
-                    nx = 0;
-                    nz = offZ >= 0 ? 1 : -1;
-                    push = penZ + COLLISION_EPS;
-                }
-            }
-
-            push = clamp(push, 0, 0.14);
-            pos.x += nx * push;
-            pos.z += nz * push;
-            return true;
-        }
-
-        function resolvePlayerCollision(pos){
-            for(let iter = 0; iter < PLAYER_PUSH_ITERS; iter++){
-                let pushed = false;
-                const centerCell = worldToCell({ x:pos.x, z:pos.z });
-
-                for(let z = centerCell.z - 2; z <= centerCell.z + 2; z++){
-                    for(let x = centerCell.x - 2; x <= centerCell.x + 2; x++){
-                        if(z < 0 || z >= mazeH || x < 0 || x >= mazeW) continue;
-                        if(mazeGrid[z][x] !== 1) continue;
-
-                        const wx = worldX(x);
-                        const wz = worldZ(z);
-                        if(pushOutFromRoundedWall(pos, wx, wz)){
-                            pushed = true;
-                        }
-                    }
-                }
-
-                if(!pushed) break;
-            }
-        }
-
-        function collidesAt(px, pz){
-            const centerCell = worldToCell({ x:px, z:pz });
-            for(let z = centerCell.z - 2; z <= centerCell.z + 2; z++){
-                for(let x = centerCell.x - 2; x <= centerCell.x + 2; x++){
-                    if(z < 0 || z >= mazeH || x < 0 || x >= mazeW) continue;
-                    if(mazeGrid[z][x] !== 1) continue;
-
-                    const wx = worldX(x);
-                    const wz = worldZ(z);
-                    if(circleIntersectsWall(px, pz, wx, wz)){
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        function movePlayer(dt){
-            _forward.set(0,0,0);
-            camera.getWorldDirection(_forward);
-            _forward.y = 0;
-            _forward.normalize();
-
-            _right.crossVectors(_forward, _up).normalize();
-
-            let inputX = 0;
-            let inputZ = 0;
-            if(keys['w']) inputZ += 1;
-            if(keys['s']) inputZ -= 1;
-            if(keys['d']) inputX += 1;
-            if(keys['a']) inputX -= 1;
-
-            const isTryingToMove = inputX !== 0 || inputZ !== 0;
-
-            const now = audioCtx ? audioCtx.currentTime : 0;
-            const nearestAssist = getNearestAssistBeat(now);
-            const timeToNearest = Math.abs(now - nearestAssist.time);
-            const inBeatWindow = beatAssistEnabled && isTryingToMove && timeToNearest <= ON_BEAT_WINDOW;
-
-            if(beatAssistEnabled && isTryingToMove && !wasTryingToMoveLastFrame){
-                const judge = getTimingJudgeLabel(timeToNearest);
-                setTimingJudge(judge.label, judge.color);
-            }
-
-            if(inBeatWindow){
-                if(nearestAssist.id !== lastRewardedAssistBeatId){
-                    beatBuffTimer = ON_BEAT_BUFF_TIME;
-                    lastRewardedAssistBeatId = nearestAssist.id;
-                }
-                if(nearestAssist.id !== lastMoveJudgeBeatId){
-                    const judge = getTimingJudgeLabel(timeToNearest);
-                    setTimingJudge(judge.label, judge.color);
-                    lastMoveJudgeBeatId = nearestAssist.id;
-                }
-            }
-
-            let baseSpeed = keys['shift'] ? 9.8 : 6.0;
-            const fatigueT = clamp((moveChainTime - 3.0) / 4.0, 0, 1);
-            let finalSpeed = baseSpeed * (beatBuffTimer > 0 ? ON_BEAT_SPEED_MULT : 1.0) * lerp(1.0, 0.82, fatigueT);
-
-            const move = new THREE.Vector3();
-            if(inputZ !== 0) move.addScaledVector(_forward, inputZ);
-            if(inputX !== 0) move.addScaledVector(_right, inputX);
-
-            if(move.lengthSq() > 0){
-                move.normalize().multiplyScalar(finalSpeed * dt);
-
-                const subSteps = Math.max(1, Math.ceil(move.length() / 0.18));
-                const stepX = move.x / subSteps;
-                const stepZ = move.z / subSteps;
-
-                for(let i = 0; i < subSteps; i++){
-                    const prevX = camera.position.x;
-                    camera.position.x += stepX;
-                    resolvePlayerCollision(camera.position);
-                    if(collidesAt(camera.position.x, camera.position.z)){
-                        camera.position.x = prevX;
-                        resolvePlayerCollision(camera.position);
-                    }
-
-                    const prevZ = camera.position.z;
-                    camera.position.z += stepZ;
-                    resolvePlayerCollision(camera.position);
-                    if(collidesAt(camera.position.x, camera.position.z)){
-                        camera.position.z = prevZ;
-                        resolvePlayerCollision(camera.position);
-                    }
-
-                    if(collidesAt(camera.position.x, camera.position.z)){
-                        camera.position.copy(lastSafePlayerPos);
-                        break;
-                    }else{
-                        lastSafePlayerPos.copy(camera.position);
-                    }
-                }
-            }
-
-            wasTryingToMoveLastFrame = isTryingToMove;
-            return { isTryingToMove, inBeatWindow, timeToNearest };
-        }
-
-        // =========================
-        // 8) Audio
-        // =========================
-        async function loadAudio(){
-            if(isAudioReady()) return true;
-            if(audioLoadPromise) return audioLoadPromise;
-
-            audioLoadPromise = (async () => {
-                try{
-                    elLoadMsg.textContent = '同步音訊緩衝區…';
-                    elLoadMsg.style.display = 'block';
-
-                    if(!audioCtx){
-                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    }
-
-                    stems = [];
-
-                    for(let i=0; i<stemFiles.length; i++){
-                        const file = stemFiles[i];
-                        const res = await fetch(file);
-                        if(!res.ok) throw new Error(`Fetch Failed: ${file}`);
-                        const arr = await res.arrayBuffer();
-                        const buffer = await audioCtx.decodeAudioData(arr);
-
-                        const gain = audioCtx.createGain();
-
-                        let panner = null;
-                        if(i === 4){
-                            if(audioCtx.createStereoPanner){
-                                panner = audioCtx.createStereoPanner();
-                                panner.connect(gain);
-                                gain.connect(audioCtx.destination);
-                            }else{
-                                panner = null;
-                                gain.connect(audioCtx.destination);
-                            }
-                        }else{
-                            gain.connect(audioCtx.destination);
-                        }
-
-                        stems.push({
-                            buffer,
-                            gain,
-                            panner,
-                            source:null
-                        });
-                    }
-
-                    analyser = audioCtx.createAnalyser();
-                    analyser.fftSize = 64;
-                    stems[0].gain.connect(analyser);
-                    dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-                    elLoadMsg.style.display = 'none';
-                    elBtnGroup.style.display = 'block';
-                    return true;
-                }catch(err){
-                    elLoadMsg.textContent = `載入失敗: ${err.message}`;
-                    elLoadMsg.style.display = 'block';
-                    elBtnGroup.style.display = 'block';
-
-                    stems.forEach(s => {
-                        try{ s.gain.disconnect(); }catch(e){}
-                        try{ s.panner?.disconnect(); }catch(e){}
-                    });
-                    stems = [];
-                    analyser = null;
-                    dataArray = null;
-
-                    if(audioCtx){
-                        try{ await audioCtx.close(); }catch(e){}
-                        audioCtx = null;
-                    }
-                    return false;
-                }finally{
-                    audioLoadPromise = null;
-                }
-            })();
-
-            return audioLoadPromise;
-        }
-
-        function stopMusic(){
-            if(!audioCtx) return;
-            for(const s of stems){
-                if(s.source){
-                    try{ s.source.stop(); }catch(e){}
-                    try{ s.source.disconnect(); }catch(e){}
-                    s.source = null;
-                }
-                if(s.gain) s.gain.gain.value = 0;
-            }
-        }
-
-        async function startMusic(){
-            if(!isAudioReady()) return null;
-            if(audioCtx.state === 'suspended') await audioCtx.resume();
-
-            const startAt = audioCtx.currentTime + 0.18;
-            for(let i=0; i<stems.length; i++){
-                const s = stems[i];
-                const src = audioCtx.createBufferSource();
-                src.buffer = s.buffer;
-                src.loop = true;
-
-                if(i === 4){
-                    if(s.panner){
-                        src.connect(s.panner);
-                    }else{
-                        src.connect(s.gain);
-                    }
-                    s.gain.gain.value = 0;
-                    threatGain = s.gain;
-                    threatPanner = s.panner;
-                }else{
-                    src.connect(s.gain);
-                    s.gain.gain.value = 0;
-                }
-
-                src.start(startAt);
-                s.source = src;
-            }
-            return startAt;
-        }
-
-        function getNearestAssistBeat(currentTime){
-            if(!audioCtx || musicStartAbsTime === 0){
-                return { id:-999, time:-999 };
-            }
-            const elapsed = currentTime - (musicStartAbsTime + BEAT_OFFSET);
-            const currentBeatFloat = elapsed / BEAT_INT;
-            const assistId =
-                Math.round((currentBeatFloat + ASSIST_PHASE) / ASSIST_EVERY_N_BEATS) * ASSIST_EVERY_N_BEATS
-                - ASSIST_PHASE;
-            const assistTime = (musicStartAbsTime + BEAT_OFFSET) + assistId * BEAT_INT;
-            return { id:assistId, time:assistTime };
-        }
-
-        function playBeatClick(time){
-            if(!beatAssistEnabled || !audioCtx) return;
-            if(time <= lastPlayedBeatTime) return;
-            if(time < audioCtx.currentTime - 0.1) return;
-
-            lastPlayedBeatTime = time;
-
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-
-            osc.type = 'triangle';
-            osc.frequency.value = 860;
-
-            gainNode.gain.setValueAtTime(0.0001, time);
-            gainNode.gain.linearRampToValueAtTime(0.08, time + 0.004);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
-
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            osc.start(time);
-            osc.stop(time + 0.06);
-        }
-
-        function updateStemMix(now){
-            if(!audioCtx || stems.length < 5) return;
-
-            const dangerDist = clamp(1 - (camera.position.distanceTo(monster.position) - 4) / 14, 0, 1);
-            const dangerState =
-                monsterStatus === AI_STATE.CHARGE ? 0.9 :
-                monsterStatus === AI_STATE.DASH ? 1.0 :
-                isAlertActive ? 0.65 : 0.0;
-
-            const danger = clamp(Math.max(dangerDist, dangerState), 0, 1);
-
-            // keep music more present even under danger
-            const duck = lerp(1.0, 0.78, danger);
-
-            stems[0].gain.gain.setTargetAtTime(0.72 * duck, now, 0.08);
-            stems[1].gain.gain.setTargetAtTime(unlockedStemLevel >= 1 ? 0.42 * duck : 0.0, now, 0.12);
-            stems[2].gain.gain.setTargetAtTime(unlockedStemLevel >= 2 ? 0.38 * duck : 0.0, now, 0.12);
-            stems[3].gain.gain.setTargetAtTime(unlockedStemLevel >= 3 ? 0.34 * duck : 0.0, now, 0.12);
-
-            if(threatGain){
-                const dist = camera.position.distanceTo(monster.position);
-                let targetThreatGain = 0;
-
-                if(graceTimer <= 0){
-                    const distFactor = clamp((18 - dist) / 14, 0, 1);
-                    let stateBoost = 1.0;
-                    if(monsterStatus === AI_STATE.CHARGE) stateBoost = 1.38;
-                    else if(monsterStatus === AI_STATE.DASH) stateBoost = 1.62;
-                    if(isAlertActive) stateBoost *= 1.18;
-                    targetThreatGain = clamp(distFactor * 0.52 * stateBoost, 0, 0.72);
-                }
-
-                threatGain.gain.setTargetAtTime(targetThreatGain, now, 0.18);
-
-                if(threatPanner){
-                    _tmpVec.copy(monster.position).sub(camera.position);
-                    _tmpVec.y = 0;
-                    if(_tmpVec.lengthSq() > 0.0001){
-                        _tmpVec.normalize();
-                        camera.getWorldDirection(_forward);
-                        _forward.y = 0;
-                        _forward.normalize();
-                        _right.crossVectors(_forward, _up).normalize();
-
-                        const pan = clamp(_right.dot(_tmpVec), -1, 1);
-                        threatPanner.pan.setTargetAtTime(pan * 0.9, now, 0.12);
-                    }
-                }
-            }
-        }
-
-        // =========================
-        // 9) Gameplay entities
-        // =========================
-        function spawnNote(id, x, z){
-            const m = new THREE.Mesh(
-                noteGeo,
-                new THREE.MeshBasicMaterial({ color: STEM_COLORS[id] || 0xffffff })
-            );
-            m.position.set(x, 1.65, z);
-            m.userData = { id, baseY:1.65 };
-            scene.add(m);
-            noteCubes.push(m);
-        }
-
-        function spawnParticleBurst(pos, color, count = 24){
-            for(let i=0; i<count; i++){
-                const mat = new THREE.MeshBasicMaterial({
-                    color,
-                    transparent:true,
-                    opacity:1
-                });
-                const mesh = new THREE.Mesh(partGeo, mat);
-                mesh.position.copy(pos);
-                particles.push({
-                    mesh,
-                    vel:new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.28,
-                        Math.random() * 0.28,
-                        (Math.random() - 0.5) * 0.28
-                    ),
-                    life:1.0,
-                    isRipple:false
-                });
-                scene.add(mesh);
-            }
-        }
-
-        function spawnRipple(pos){
-            const geo = new THREE.RingGeometry(0.15, 0.22, 32);
-            const mat = new THREE.MeshBasicMaterial({
-                color:0x00ffcc,
-                transparent:true,
-                opacity:1,
-                side:THREE.DoubleSide
+        // 點擊感
+        playOscBurst({
+            when,
+            freq: 1800,
+            type: 'square',
+            gain: 0.015,
+            decay: 0.022,
+            sweepTo: 500,
+            bus: audio.musicBus
+        });
+    }
+
+    function scheduleHat(when, gain = 0.018) {
+        if (!audio) return;
+        const bufferSize = 2 * audio.ctx.sampleRate * 0.03;
+        const buffer = audio.ctx.createBuffer(1, bufferSize, audio.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+
+        const src = audio.ctx.createBufferSource();
+        const hp = audio.ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 7000;
+
+        const g = audio.ctx.createGain();
+        g.gain.setValueAtTime(gain, when);
+        g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+
+        src.buffer = buffer;
+        src.connect(hp);
+        hp.connect(g);
+        g.connect(audio.musicBus);
+        src.start(when);
+        src.stop(when + 0.06);
+    }
+
+    function scheduleBass(when, beatIndex) {
+        const pattern = [55, 55, 73.42, 65.41];
+        const f = pattern[beatIndex % pattern.length];
+        playOscBurst({
+            when,
+            freq: f,
+            type: 'sawtooth',
+            gain: 0.05,
+            decay: 0.22,
+            sweepTo: f * 0.96,
+            bus: audio.musicBus
+        });
+    }
+
+    function schedulePad(when, beatIndex) {
+        if (beatIndex % 4 !== 0) return;
+        const freqs = [220, 277.18, 329.63];
+        freqs.forEach((f, i) => {
+            playOscBurst({
+                when: when + i * 0.005,
+                freq: f,
+                type: 'sine',
+                gain: 0.018,
+                decay: 0.9,
+                sweepTo: f * 1.003,
+                bus: audio.musicBus,
+                pan: i === 0 ? -0.15 : i === 2 ? 0.15 : 0
             });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.copy(pos);
-            mesh.position.y = 0.08;
-            mesh.rotation.x = -Math.PI / 2;
+        });
+    }
 
-            particles.push({
-                mesh,
-                vel:null,
-                life:1.0,
-                isRipple:true
+    function scheduleMetronome(when) {
+        playOscBurst({
+            when,
+            freq: 120,
+            type: 'triangle',
+            gain: 0.055,
+            decay: 0.08,
+            sweepTo: 64,
+            bus: audio.sfxBus
+        });
+    }
+
+    function scheduleGuidePulse(when, relativeAngle, distanceToGoal) {
+        const pan = Math.sin(relativeAngle);
+        const centered = Math.abs(relativeAngle) < 0.18;
+
+        const freq = lerp(300, 920, 1 - clamp(distanceToGoal / 1200, 0, 1));
+        const gain = game.mode === 'tutorial'
+            ? lerp(0.05, 0.14, 1 - clamp(distanceToGoal / 1200, 0, 1))
+            : lerp(0.035, 0.09, 1 - clamp(distanceToGoal / 1200, 0, 1));
+
+        playOscBurst({
+            when,
+            freq,
+            type: centered ? 'triangle' : 'sine',
+            gain,
+            decay: centered ? 0.13 : 0.09,
+            sweepTo: centered ? freq * 1.45 : freq * 1.08,
+            pan,
+            bus: audio.sfxBus
+        });
+
+        if (centered) {
+            playOscBurst({
+                when: when + 0.055,
+                freq: freq * 1.85,
+                type: 'sine',
+                gain: gain * 0.46,
+                decay: 0.08,
+                sweepTo: freq * 1.92,
+                pan: pan * 0.35,
+                bus: audio.sfxBus
             });
-            scene.add(mesh);
         }
+    }
 
-        function updateParticles(dt){
-            for(let i = particles.length - 1; i >= 0; i--){
-                const p = particles[i];
-                if(p.isRipple){
-                    p.life -= dt * 0.75;
-                    p.mesh.scale.addScalar(dt * 22);
-                    p.mesh.material.opacity = p.life;
-                }else{
-                    p.mesh.position.add(p.vel);
-                    p.vel.y -= 0.42 * dt;
-                    p.life -= dt * 1.25;
-                    p.mesh.material.opacity = p.life;
-                    p.mesh.scale.setScalar(Math.max(p.life, 0.05));
-                }
+    function playFootstep(good = true) {
+        if (!audio) return;
+        const now = audio.ctx.currentTime;
+        playOscBurst({
+            when: now,
+            freq: good ? 92 : 138,
+            type: good ? 'triangle' : 'square',
+            gain: good ? 0.045 : 0.085,
+            decay: 0.095,
+            sweepTo: good ? 48 : 82,
+            bus: audio.sfxBus
+        });
+    }
 
-                if(p.life <= 0){
-                    if(p.isRipple) p.mesh.geometry.dispose();
-                    p.mesh.material.dispose();
-                    scene.remove(p.mesh);
-                    particles.splice(i, 1);
-                }
-            }
-        }
+    function playThreatBlip(level = 0.5) {
+        if (!audio) return;
+        const now = audio.ctx.currentTime;
+        playOscBurst({
+            when: now,
+            freq: 220 + level * 180,
+            type: 'sawtooth',
+            gain: 0.02 + level * 0.07,
+            decay: 0.16,
+            sweepTo: 80,
+            pan: randRange(-0.9, 0.9),
+            bus: audio.sfxBus
+        });
+    }
 
-        function updateStemHUD(){
-            const stemState = [
-                [elS1, unlockedStemLevel >= 1],
-                [elS2, unlockedStemLevel >= 2],
-                [elS3, unlockedStemLevel >= 3]
-            ];
-            for(const [el, on] of stemState){
-                el.textContent = on ? 'ON' : 'LOCKED';
-                el.style.color = on ? '#fff' : '#555';
-            }
-        }
-
-        function updateObjectiveUI(){
-            if(notesCollected < 3){
-                elObjective.textContent = `COLLECT ${3 - notesCollected} MORE`;
-                elStatusMain.textContent = `FRAGMENTS ${notesCollected} / 3`;
-                elStatusSub.textContent = beatAssistEnabled
-                    ? '本關碎片只開門；完成撤離後，下一區域才會增加音軌。'
-                    : '這一層沒有節拍提示；而且音軌要到下一區域才會增加。';
-            }else{
-                elObjective.textContent = `PORTAL OPEN — FIND CYAN GATE`;
-                elStatusMain.textContent = `EXIT READY`;
-                elStatusSub.textContent = '看見青色門光就直接撤離。';
-            }
-        }
-
-        function getCollapseStage(value = syncCollapse){
-            if(value >= 85){
-                return {
-                    key:'CRITICAL',
-                    color:'#ff7a5f',
-                    main:'SYNC COLLAPSE',
-                    sub:'再拖下去你會自己把節奏玩壞。跟拍、停一下、直接收尾。'
-                };
-            }
-            if(value >= 60){
-                return {
-                    key:'SEVERE',
-                    color:'#ffb04d',
-                    main:'SYNC UNSTABLE',
-                    sub:'連跑只會看到失真的殘影；跟拍才看得清，停一下才聽得懂。'
-                };
-            }
-            if(value >= 30){
-                return {
-                    key:'WARN',
-                    color:'#ffd166',
-                    main:'SYNC STRAIN',
-                    sub:'你開始失同步了。跑只能瞥見，跟拍才會比較清楚。'
-                };
-            }
-            return {
-                key:'OK',
-                color:'#00ffcc',
-                main:'SYNC STABLE',
-                sub:'跑只能短暫掃描；跟拍最清楚，停下來可重新同步。'
-            };
-        }
-
-        function updatePerceptionState(dt, movementState, distMoved, distToMonster){
-            const moving = movementState.isTryingToMove && distMoved > 0.001;
-            const sprinting = moving && keys['shift'];
-            const onBeatStep = moving && beatAssistEnabled && movementState.inBeatWindow;
-            const offBeatMove = moving && beatAssistEnabled && !movementState.inBeatWindow;
-
-            if(moving){
-                stillListenTime = 0;
-                sprintTime = sprinting ? sprintTime + dt : Math.max(0, sprintTime - 2.2 * dt);
-
-                syncCollapse = Math.min(100, syncCollapse + (sprinting ? 5.6 : 1.9) * dt);
-                if(offBeatMove) syncCollapse = Math.min(100, syncCollapse + 7.8 * dt);
-                if(notesCollected === 3) syncCollapse = Math.min(100, syncCollapse + 0.7 * dt);
-
-                if(onBeatStep){
-                    syncCollapse = Math.max(0, syncCollapse - 9.5 * dt);
-                    scanPulse = Math.max(scanPulse, 0.36);
-                    scanPulseStrength = 1.0;
-                    scanPulseClarity = clamp(0.62 + (1 - syncCollapse / 100) * 0.28, 0.45, 0.96);
-                }else if(sprinting){
-                    scanPulse = Math.max(scanPulse, 0.24);
-                    scanPulseStrength = 0.72;
-                    scanPulseClarity = clamp(0.42 - Math.min(sprintTime, 4) * 0.05 - (syncCollapse / 100) * 0.16, 0.12, 0.54);
-                }else{
-                    scanPulse = Math.max(scanPulse, 0.18);
-                    scanPulseStrength = 0.56;
-                    scanPulseClarity = clamp(0.48 - (syncCollapse / 100) * 0.12, 0.2, 0.58);
-                }
-            }else{
-                sprintTime = Math.max(0, sprintTime - 2.8 * dt);
-                stillListenTime += dt;
-                syncCollapse = Math.max(0, syncCollapse - (stillListenTime > 0.8 ? 8.4 : 4.1) * dt);
-
-                if(stillListenTime > 0.8){
-                    scanPulse = Math.max(scanPulse, 0.14);
-                    scanPulseStrength = 0.35;
-                    scanPulseClarity = clamp(0.72 - (syncCollapse / 100) * 0.18, 0.38, 0.82);
-                }
-            }
-
-            if(graceTimer <= 0){
-                const proximityPressure = clamp((10 - distToMonster) / 10, 0, 1);
-                syncCollapse = Math.min(100, syncCollapse + proximityPressure * (isAlertActive ? 3.4 : 1.6) * dt);
-            }
-
-            const collapseT = syncCollapse / 100;
-            const listenBonus = stillListenTime > 0.8 ? Math.min((stillListenTime - 0.8) * 0.35, 0.18) : 0;
-
-            infoClarity = clamp(
-                0.54
-                + (onBeatStep ? 0.22 : 0)
-                + listenBonus
-                - Math.min(sprintTime, 4) * 0.085
-                - (offBeatMove ? 0.08 : 0)
-                - collapseT * 0.34
-                - (isAlertActive ? 0.05 : 0),
-                0.12,
-                0.96
-            );
-
-            scanPulse = Math.max(0, scanPulse - dt * 2.6);
-        }
-
-        function updatePerceptionLighting(){
-            const curLvl = LEVELS[currentLevelIdx] || { flash:0x00ffff };
-            camera.getWorldDirection(_forward);
-            _forward.y = 0;
-            _forward.normalize();
-
-            const pulse = scanPulse * scanPulseStrength;
-            const clarityT = scanPulse > 0 ? scanPulseClarity : infoClarity;
-            const collapseT = syncCollapse / 100;
-
-            flashLight.color.setHex(curLvl.flash);
-            flashLight.position.copy(camera.position).addScaledVector(_forward, 1.9 + clarityT * 1.2);
-            flashLight.position.y = camera.position.y + 0.05;
-            flashLight.distance = lerp(7.5, 15.0, clarityT) + pulse * 4.5;
-            flashLight.intensity = pulse * lerp(3.6, 9.8, clarityT) * lerp(1.0, 0.62, collapseT);
-
-            if(stillListenTime > 0.8){
-                flashLight.intensity *= 0.72;
-            }
-        }
-
-        function getCellKey(cell){
-            return `${cell.x},${cell.z}`;
-        }
-
-        function isWalkableCell(x, z){
-            return z >= 0 && z < mazeH && x >= 0 && x < mazeW && mazeGrid[z][x] === 0;
-        }
-
-        function trackPlayerRoute(cell){
-            return;
-        }
-
-        function getCutOffTargetCell(pCell){
-            return pCell;
-        }
-
-        function resetSession(fullReset = false){
-
-            clearTransientUI();
-
-            notesCollected = 0;
-            currentCollectedIds.clear();
-
-            beatCount = 0;
-            nextBeatTime = 0;
-            musicStartAbsTime = 0;
-            beatBuffTimer = 0;
-            lastPlayedBeatTime = -999;
-            lastRewardedAssistBeatId = -999;
-            lastMoveJudgeBeatId = -999;
-            wasTryingToMoveLastFrame = false;
-
-            victoryTimer = 0;
-            tutorialTimer = -1;
-            aiTimer = 0;
-            screenShake = 0;
-
-            playerNoise = 0;
-            isAlertActive = false;
-            timingJudgeTimer = 0;
-            monsterStatus = AI_STATE.HUNT;
-            playerBeatTrail = [];
-            kitePressure = 0;
-            cutOffBeats = 0;
-            moveChainTime = 0;
-            syncCollapse = 0;
-            infoClarity = 0.58;
-            sprintTime = 0;
-            stillListenTime = 0;
-            scanPulse = 0;
-            scanPulseStrength = 0;
-            scanPulseClarity = 0.58;
-
-            if(fullReset){
-                currentLevelIdx = 0;
-                unlockedStemLevel = 0;
-                gameStats = { totalTime:0, alerts:0, deaths:0 };
-            }
-
-            for(const k in keys) keys[k] = false;
-
-            elNoiseUI.style.display = 'none';
-            elGameHUD.style.display = 'none';
-            elStageIndicator.style.display = 'none';
-            elStatusBox.style.display = 'none';
-            elCrosshair.style.display = 'none';
-            elBeatRing.style.display = 'none';
-            elBeatRing.style.opacity = '0';
-            elBeatRing.style.transform = 'translate(-50%,-50%) scale(1)';
-            elTimingJudge.style.display = 'none';
-            elEdgeWarning.style.opacity = '0';
-
-            elNoiseBar.style.width = '0%';
-            elNoiseBar.style.background = '#fff';
-            elNoiseText.textContent = '[ NOISE LEVEL ]';
-            elNoiseText.style.color = '#aaa';
-
-            updateStemHUD();
-
-            monster.visible = false;
-            monster.material.opacity = 0;
-            monster.material.wireframe = true;
-            portal.visible = false;
-            portalGlow.visible = false;
-            chargeRing.visible = false;
-
-            particles.forEach(p => {
-                if(p.isRipple) p.mesh.geometry.dispose();
-                p.mesh.material.dispose();
-                scene.remove(p.mesh);
+    function playWinTone() {
+        if (!audio) return;
+        const now = audio.ctx.currentTime;
+        [440, 660, 880].forEach((f, i) => {
+            playOscBurst({
+                when: now + i * 0.08,
+                freq: f,
+                type: 'sine',
+                gain: 0.08,
+                decay: 0.24,
+                sweepTo: f * 1.02,
+                bus: audio.sfxBus
             });
-            particles = [];
-
-            updateObjectiveUI();
-        }
-
-        // =========================
-        // 10) State flow
-        // =========================
-        function handleLevelClear(){
-            const clearedState = currentStatus;
-
-            stopMusic();
-            setPaused(false);
-            programmaticUnlock();
-
-            elGameHUD.style.display = 'none';
-            elNoiseUI.style.display = 'none';
-            elStageIndicator.style.display = 'none';
-            elStatusBox.style.display = 'none';
-            elCrosshair.style.display = 'none';
-            elBeatRing.style.display = 'none';
-            elBeatRing.style.opacity = '0';
-            elBeatRing.style.transform = 'translate(-50%,-50%) scale(1)';
-            elTimingJudge.style.display = 'none';
-            hideAllOverlays();
-            clearTransientUI();
-
-            if(clearedState === STATE.TUTORIAL){
-                currentStatus = STATE.MENU;
-                resetMenuScene();
-                elMenu.style.display = 'flex';
-                elTitle.textContent = '教學協議完成';
-                elBtnGroup.style.display = 'block';
-                return;
-            }
-
-            if(currentLevelIdx >= LEVELS.length - 1){
-                currentStatus = STATE.SUMMARY;
-                resetMenuScene();
-                elSummary.style.display = 'flex';
-                elFinalStats.innerHTML =
-                    `總存活時間：${Math.floor(gameStats.totalTime)} 秒<br>` +
-                    `觸發警戒：${gameStats.alerts} 次<br>` +
-                    `總死亡：${gameStats.deaths} 次<br>` +
-                    `任務狀態：完整撤離`;
-            }else{
-                const nextLvl = LEVELS[currentLevelIdx + 1];
-                const nextStemName = STEM_UNLOCK_ORDER[Math.min(unlockedStemLevel, STEM_UNLOCK_ORDER.length - 1)];
-                unlockedStemLevel = Math.min(unlockedStemLevel + 1, 3);
-                currentStatus = STATE.TRANSITION;
-                resetMenuScene();
-                elTransition.style.display = 'flex';
-                elTransTitle.textContent = `SECTOR ${currentLevelIdx + 1} CLEAR`;
-                elTransStats.innerHTML =
-                    `解鎖下一區域：<span style="color:#00ffcc">${nextLvl.envName}</span><br>` +
-                    `新增音軌：<span style="color:#00ffcc">${nextStemName}</span><br>` +
-                    `提示輔助：${nextLvl.beatAssist ? 'ON' : 'OFF'}<br>` +
-                    `準備深潛…`;
-                currentLevelIdx++;
-            }
-        }
-
-        function endGame(win, reason = ''){
-            clearTransientUI();
-
-            if(win){
-                stopMusic();
-                currentStatus = STATE.WIN;
-                victoryTimer = 1.25;
-                spawnParticleBurst(camera.position, 0x00ffcc, 54);
-                showMsg('撤離成功：區域已收束', 1400);
-                return;
-            }
-
-            gameStats.deaths++;
-
-            stopMusic();
-            currentStatus = STATE.MENU;
-            setPaused(false);
-            programmaticUnlock();
-
-            elGameHUD.style.display = 'none';
-            elNoiseUI.style.display = 'none';
-            elStageIndicator.style.display = 'none';
-            elStatusBox.style.display = 'none';
-            elCrosshair.style.display = 'none';
-            hideAllOverlays();
-
-            resetMenuScene();
-
-            elMenu.style.display = 'flex';
-            elTitle.textContent = 'SYSTEM COLLAPSE';
-            elBtnGroup.style.display = 'block';
-
-            if(reason){
-                elDeathReason.textContent = `[ DEATH: ${reason} ]`;
-                elDeathReason.style.display = 'block';
-            }
-        }
-
-        async function enterState(state, isFullReset = false){
-            if(isTransitioning) return;
-            isTransitioning = true;
-
-            try{
-                const ready = await loadAudio();
-                if(!ready){
-                    showMsg('音訊尚未就緒，無法開始');
-                    return;
-                }
-
-                currentStatus = state;
-                setPaused(false);
-                stopMusic();
-                resetSession(isFullReset);
-                hideAllOverlays();
-
-                let curLvl = {
-                    w:15, h:15,
-                    envName:'TUTORIAL',
-                    mType:'hunter',
-                    fog:0x07161c,
-                    flash:0x00ffff,
-                    beatAssist:true,
-                    alertHigh:56,
-                    alertLow:26,
-                    rooms:2,
-                    loops:6,
-                    grace:4.0
-                };
-
-                if(state === STATE.GAME){
-                    curLvl = LEVELS[currentLevelIdx];
-                    activeMonsterDef = MONSTER_TYPES[curLvl.mType];
-                }else{
-                    activeMonsterDef = MONSTER_TYPES.hunter;
-                }
-
-                beatAssistEnabled = !!curLvl.beatAssist;
-                graceTimer = curLvl.grace;
-
-                mazeW = curLvl.w;
-                mazeH = curLvl.h;
-
-                const seed = state === STATE.TUTORIAL ? 101 : Math.floor(Math.random() * 999999);
-                const rnd = seededRandom(seed);
-
-                mazeGrid = generateMaze(mazeW, mazeH, rnd, curLvl.rooms, curLvl.loops);
-                buildMazeMeshes();
-
-                const openCells = getOpenReachableCells();
-                const portalCell = openCells[openCells.length - 1];
-                const monsterCell = openCells[openCells.length - 2];
-
-                const pickPool = openCells.filter(c =>
-                    !(c.x === portalCell.x && c.z === portalCell.z) &&
-                    !(c.x === monsterCell.x && c.z === monsterCell.z)
-                );
-
-                const used = new Set();
-                function pickAtPercent(p){
-                    const idx = clamp(Math.floor(pickPool.length * p), 0, pickPool.length - 1);
-                    let cell = pickPool[idx];
-                    let cursor = idx;
-                    while(cell && used.has(`${cell.x},${cell.z}`) && cursor < pickPool.length - 1){
-                        cursor++;
-                        cell = pickPool[cursor];
-                    }
-                    used.add(`${cell.x},${cell.z}`);
-                    return cell;
-                }
-
-                portal.position.set(worldX(portalCell.x), 2.0, worldZ(portalCell.z));
-                portalGlow.position.copy(portal.position);
-                portalGlow.position.y = 2.6;
-
-                if(state === STATE.TUTORIAL){
-                    const tNote = pickAtPercent(0.35);
-                    spawnNote(1, worldX(tNote.x), worldZ(tNote.z));
-                }else{
-                    const c1 = pickAtPercent(0.28);
-                    const c2 = pickAtPercent(0.58);
-                    const c3 = pickAtPercent(0.82);
-
-                    spawnNote(1, worldX(c1.x), worldZ(c1.z));
-                    spawnNote(2, worldX(c2.x), worldZ(c2.z));
-                    spawnNote(3, worldX(c3.x), worldZ(c3.z));
-
-                    monster.position.set(worldX(monsterCell.x), 2.1, worldZ(monsterCell.z));
-                    monster.visible = true;
-                }
-
-                camera.position.set(worldX(1), 1.62, worldZ(1));
-                lastSafePlayerPos.copy(camera.position);
-                controls.lock();
-
-                scene.fog.color.setHex(curLvl.fog);
-                scene.background.copy(scene.fog.color);
-                flashLight.color.setHex(curLvl.flash);
-                monster.material.color.setHex(activeMonsterDef.color);
-                chargeRing.material.color.setHex(activeMonsterDef.color);
-
-                elGameHUD.style.display = 'block';
-                elNoiseUI.style.display = state === STATE.GAME ? 'block' : 'none';
-                elStageIndicator.style.display = state === STATE.GAME ? 'block' : 'none';
-                elStatusBox.style.display = state === STATE.GAME ? 'block' : 'none';
-                elCrosshair.style.display = state === STATE.GAME ? 'block' : 'none';
-                elBeatRing.style.display = (state === STATE.GAME && beatAssistEnabled) ? 'block' : 'none';
-                elTimingJudge.style.display = 'none';
-
-                if(state === STATE.GAME){
-                    elEnvName.textContent = curLvl.envName;
-                    elThreatClass.textContent = `THREAT: ${activeMonsterDef.name}`;
-                    elThreatClass.style.color = `#${activeMonsterDef.color.toString(16).padStart(6,'0')}`;
-                    elAssistNote.textContent = `ASSIST: ${beatAssistEnabled ? 'ON' : 'OFF'}`;
-                    elAssistNote.style.color = beatAssistEnabled ? '#00ffcc' : '#ff3b30';
-
-                    showMsg(`進入 ${curLvl.envName} … 開局 ${curLvl.grace.toFixed(1)} 秒觀察期`, 2200);
-                }else{
-                    showMsg('教學：先拿到 1 顆音軌碎片', 2200);
-                }
-
-                updateObjectiveUI();
-
-                musicStartAbsTime = await startMusic();
-                if(musicStartAbsTime === null){
-                    showMsg('啟動失敗');
-                    endGame(false, DEATH_REASON.CONTACT);
-                    return;
-                }
-                nextBeatTime = musicStartAbsTime + BEAT_OFFSET;
-            }finally{
-                isTransitioning = false;
-            }
-        }
-
-        // =========================
-        // 11) AI
-        // =========================
-        function moveMonsterOneChaseBurst(chaseMap, steps){
-            let cur = worldToCell(monster.position);
-            let curX = cur.x;
-            let curZ = cur.z;
-
-            for(let s=0; s<steps; s++){
-                let best = {
-                    x:curX,
-                    z:curZ,
-                    d:chaseMap[curZ]?.[curX] ?? Infinity
-                };
-
-                for(const [dx, dz] of [[0,1],[0,-1],[1,0],[-1,0]]){
-                    const nx = curX + dx;
-                    const nz = curZ + dz;
-                    const d = chaseMap[nz]?.[nx];
-                    if(d !== undefined && d !== -1 && d < best.d){
-                        best = { x:nx, z:nz, d };
-                    }
-                }
-
-                curX = best.x;
-                curZ = best.z;
-            }
-
-            monster.position.x = worldX(curX);
-            monster.position.z = worldZ(curZ);
-        }
-
-        function handleBeat(){
-            if(currentStatus !== STATE.GAME) return;
-            if(graceTimer > 0) return;
-
-            const pCell = worldToCell(camera.position);
-            const chaseMap = getDistanceMap(mazeGrid, pCell.x, pCell.z);
-
-            const isAssistBeat = ((beatCount + ASSIST_PHASE) % ASSIST_EVERY_N_BEATS) === 0;
-            if(isAssistBeat && beatAssistEnabled){
-                sonarRevealTimer = 0.15;
-            }
-
-            if(monsterStatus === AI_STATE.HUNT){
-                const moveEvery = isAlertActive ? activeMonsterDef.alertMoveEvery : activeMonsterDef.moveEvery;
-                const shouldMove = beatCount % moveEvery === 0;
-                if(shouldMove){
-                    const baseSteps = notesCollected === 3 ? activeMonsterDef.end : activeMonsterDef.base;
-                    const huntSteps = baseSteps + (isAlertActive ? activeMonsterDef.alertBonus : 0);
-                    moveMonsterOneChaseBurst(chaseMap, huntSteps);
-                }
-
-                const chargeFreq = isAlertActive ? activeMonsterDef.alertFreq : activeMonsterDef.chargeFreq;
-                if(beatCount % chargeFreq === 0){
-                    monsterStatus = AI_STATE.CHARGE;
-                    aiTimer = 0;
-                    screenShake = isAlertActive ? 0.55 : 0.34;
-                    showMsg(isAlertActive ? '紅色＝危險。牠已經被噪音激怒。' : '相位蓄力啟動', 900);
-                }
-            }
-            else if(monsterStatus === AI_STATE.DASH){
-                moveMonsterOneChaseBurst(chaseMap, activeMonsterDef.dash);
-                monsterStatus = AI_STATE.RECOVER;
-            }
-            else if(monsterStatus === AI_STATE.RECOVER){
-                monsterStatus = AI_STATE.HUNT;
-            }
-        }
-
-        // =========================
-        // 12) Main loop
-        // =========================
-        function animate(){
-            requestAnimationFrame(animate);
-
-            const dt = Math.min(clock.getDelta(), 0.05);
-            const now = audioCtx ? audioCtx.currentTime : 0;
-
-            updateParticles(dt);
-
-            if(currentStatus === STATE.WIN){
-                victoryTimer -= dt;
-                if(victoryTimer <= 0){
-                    handleLevelClear();
-                }
-                renderer.render(scene, camera);
-                return;
-            }
-
-            if(currentStatus !== STATE.GAME && currentStatus !== STATE.TUTORIAL){
-                renderer.render(scene, camera);
-                return;
-            }
-
-            if(isPaused){
-                elBeatRing.style.display = 'none';
-                renderer.render(scene, camera);
-                return;
-            }
-
-            if(controls.isLocked){
-                _oldPos.copy(camera.position);
-
-                if(graceTimer > 0) graceTimer -= dt;
-                if(sonarRevealTimer > 0) sonarRevealTimer -= dt;
-                if(beatBuffTimer > 0) beatBuffTimer -= dt;
-                if(timingJudgeTimer > 0){
-                    timingJudgeTimer -= dt;
-                    if(timingJudgeTimer <= 0){
-                        elTimingJudge.style.display = 'none';
-                    }
-                }
-
-                const movementState = movePlayer(dt);
-
-                const distMoved = _oldPos.distanceTo(camera.position);
-                const distToMonster = camera.position.distanceTo(monster.position);
-
-                // noise
-                if(currentStatus === STATE.GAME){
-                    gameStats.totalTime += dt;
-
-                    if(distMoved > 0.001){
-                        moveChainTime += dt;
-                        const baseNoise = keys['shift'] ? 72 : 24;
-                        const mult = (movementState.inBeatWindow && beatAssistEnabled) ? ON_BEAT_NOISE_MULT : 1.0;
-                        const runTax = moveChainTime > 2.2 ? lerp(0, keys['shift'] ? 28 : 16, clamp((moveChainTime - 2.2) / 3.8, 0, 1)) : 0;
-                        const collapseTax = (!movementState.inBeatWindow && beatAssistEnabled) ? lerp(0, 20, syncCollapse / 100) : 0;
-                        playerNoise = Math.min(100, playerNoise + (baseNoise * mult + runTax + collapseTax) * dt);
-                    }else{
-                        moveChainTime = Math.max(0, moveChainTime - 2.4 * dt);
-                        playerNoise = Math.max(0, playerNoise - 38 * dt);
-                    }
-
-                    updatePerceptionState(dt, movementState, distMoved, distToMonster);
-
-                    const curLvl = LEVELS[currentLevelIdx];
-                    if(playerNoise >= curLvl.alertHigh && !isAlertActive){
-                        isAlertActive = true;
-                        gameStats.alerts++;
-                        showMsg('紅色＝危險。你把牠吵醒了。', 1200);
-                    }else if(playerNoise <= curLvl.alertLow && isAlertActive){
-                        isAlertActive = false;
-                        showMsg('威脅下降：你重新躲回安靜區了。', 1200);
-                    }
-
-                    // UI semantics: red = danger, cyan = stable timing, amber = self-collapse
-                    elNoiseBar.style.width = `${playerNoise}%`;
-                    if(isAlertActive){
-                        elNoiseBar.style.background = '#ff3b30';
-                        elNoiseText.textContent = '[ ALERT ]';
-                        elNoiseText.style.color = '#ff3b30';
-                    }else if(syncCollapse >= 60){
-                        elNoiseBar.style.background = '#ffb04d';
-                        elNoiseText.textContent = '[ SYNC COLLAPSE ]';
-                        elNoiseText.style.color = '#ffb04d';
-                    }else if(syncCollapse >= 30){
-                        elNoiseBar.style.background = '#ffd166';
-                        elNoiseText.textContent = '[ SYNC STRAIN ]';
-                        elNoiseText.style.color = '#ffd166';
-                    }else if(beatBuffTimer > 0){
-                        elNoiseBar.style.background = '#00ffcc';
-                        elNoiseText.textContent = '[ ON BEAT : CLEARER / QUIETER ]';
-                        elNoiseText.style.color = '#00ffcc';
-                    }else if(stillListenTime > 0.8){
-                        elNoiseBar.style.background = '#8affea';
-                        elNoiseText.textContent = '[ LISTENING / RE-SYNC ]';
-                        elNoiseText.style.color = '#8affea';
-                    }else{
-                        elNoiseBar.style.background = '#ffffff';
-                        elNoiseText.textContent = '[ NOISE LEVEL ]';
-                        elNoiseText.style.color = '#aaa';
-                    }
-
-                    // proximity edge warning
-                    const edgeDanger =
-                        monsterStatus === AI_STATE.DASH ? clamp((5.5 - distToMonster) / 3.3, 0, 1) :
-                        clamp((4.8 - distToMonster) / 3.1, 0, 1);
-                    elEdgeWarning.style.opacity = String(edgeDanger * 0.9);
-
-                    // environmental danger tint
-                    const targetFogHex = (isAlertActive || monsterStatus === AI_STATE.CHARGE || monsterStatus === AI_STATE.DASH)
-                        ? activeMonsterDef.color
-                        : LEVELS[currentLevelIdx].fog;
-                    _targetColor.setHex(targetFogHex);
-                    scene.fog.color.lerp(_targetColor, dt * 1.6);
-                    scene.background.copy(scene.fog.color);
-
-                    updateStemMix(now);
-
-                    // status text
-                    const collapseStage = getCollapseStage();
-                    if(graceTimer > 0){
-                        elStatusMain.textContent = `OBSERVE WINDOW ${graceTimer.toFixed(1)}s`;
-                        elStatusSub.textContent = '這段時間怪物不追你。先看路、先聽聲、先抓節拍。';
-                    }else if(monsterStatus === AI_STATE.CHARGE){
-                        elStatusMain.textContent = 'DANGER : CHARGE';
-                        elStatusSub.textContent = '紅色只是更危險，不代表怪物作弊。這時別硬衝直線。';
-                    }else if(monsterStatus === AI_STATE.DASH){
-                        elStatusMain.textContent = 'DANGER : DASH';
-                        elStatusSub.textContent = '跑只能瞥見；要看清路口，盡量踩拍切角。';
-                    }else if(isAlertActive){
-                        elStatusMain.textContent = 'ALERT ACTIVE';
-                        elStatusSub.textContent = '噪音太高。停一下重整節拍，否則你只會越看越亂。';
-                    }else if(syncCollapse >= 30){
-                        elStatusMain.textContent = collapseStage.main;
-                        elStatusSub.textContent = collapseStage.sub;
-                    }else if(stillListenTime > 0.8){
-                        elStatusMain.textContent = 'RE-SYNC WINDOW';
-                        elStatusSub.textContent = '停下來後，你的節拍提示會更穩，怪物方位也更好判。';
-                    }else{
-                        updateObjectiveUI();
-                    }
-                }
-
-                // beat timeline
-                if(nextBeatTime > 0){
-                    while(now >= nextBeatTime){
-                        beatCount++;
-
-                        const isAssistBeat = ((beatCount + ASSIST_PHASE) % ASSIST_EVERY_N_BEATS) === 0;
-                        if(isAssistBeat && beatAssistEnabled){
-                            playBeatClick(nextBeatTime);
-                        }
-
-                        handleBeat();
-                        nextBeatTime += BEAT_INT;
-                    }
-                }
-
-                const canShowBeatRing = beatAssistEnabled && audioCtx && musicStartAbsTime > 0 && (currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL);
-                if(canShowBeatRing){
-                    const nearestAssist = getNearestAssistBeat(now);
-                    const beatDelta = Math.abs(now - nearestAssist.time);
-                    const beatPulse = clamp(1 - beatDelta / (BEAT_INT * 0.55), 0, 1);
-                    const collapseT = syncCollapse / 100;
-                    const jitter = collapseT * (0.012 + Math.abs(Math.sin(now * 24)) * 0.022);
-                    const ringScale = 1 + beatPulse * lerp(0.14, 0.26, infoClarity) + jitter;
-                    const ringOpacity = lerp(0.10, 0.84, beatPulse) * lerp(0.7, 1.0, infoClarity) + (stillListenTime > 0.8 ? 0.08 : 0);
-                    const ringBlur = (1 - infoClarity) * 1.35;
-                    const ringColor = syncCollapse >= 60 ? '#9bffe8' : '#00ffcc';
-                    elBeatRing.style.display = 'block';
-                    elBeatRing.style.opacity = String(clamp(ringOpacity, 0.08, 0.96));
-                    elBeatRing.style.transform = `translate(-50%,-50%) scale(${ringScale})`;
-                    elBeatRing.style.borderColor = ringColor;
-                    elBeatRing.style.boxShadow = `0 0 ${6 + beatPulse * lerp(10, 20, infoClarity)}px rgba(0,255,204,${0.10 + beatPulse * lerp(0.22, 0.42, infoClarity)})`;
-                    elBeatRing.style.filter = `blur(${ringBlur.toFixed(2)}px)`;
-                }else{
-                    elBeatRing.style.display = 'none';
-                }
-
-                // perception lighting / monster readability
-                updatePerceptionLighting();
-
-                if(monster.visible){
-                    let targetOpacity = 0;
-                    if(monsterStatus === AI_STATE.CHARGE){
-                        targetOpacity = 0.88 + Math.sin(now * 18) * 0.1;
-                        monster.material.wireframe = false;
-                    }else if(monsterStatus === AI_STATE.DASH){
-                        targetOpacity = 1.0;
-                        monster.material.wireframe = false;
-                    }else if(sonarRevealTimer > 0){
-                        targetOpacity = 0.55;
-                        monster.material.wireframe = true;
-                    }else if(beatBuffTimer > 0){
-                        targetOpacity = 0.24 + infoClarity * 0.18;
-                        monster.material.wireframe = false;
-                    }else if(stillListenTime > 0.8){
-                        targetOpacity = 0.18;
-                        monster.material.wireframe = true;
-                    }else if(keys['shift'] && moveChainTime >= 1.2){
-                        targetOpacity = 0.11 + scanPulse * 0.16;
-                        monster.material.wireframe = false;
-                    }else{
-                        targetOpacity = 0.12;
-                        monster.material.wireframe = true;
-                    }
-                    monster.material.opacity = targetOpacity;
-                }
-
-                // charge ring
-                if(monsterStatus === AI_STATE.CHARGE){
-                    chargeRing.visible = true;
-                    chargeRing.position.copy(monster.position);
-                    chargeRing.position.y = 0.08;
-                    const ringScale = isAlertActive ? 3.4 : 2.5;
-                    chargeRing.scale.setScalar(1 + aiTimer * ringScale);
-                    chargeRing.material.opacity = clamp(1 - aiTimer, 0, 1);
-                }else{
-                    chargeRing.visible = false;
-                }
-
-                // portal
-                if(portal.visible){
-                    portal.rotation.x += dt * 1.2;
-                    portal.rotation.y += dt * 1.4;
-                    portalGlow.visible = true;
-                    portalGlow.intensity = 0.8 + Math.sin(now * 4) * 0.25;
-                }else{
-                    portalGlow.visible = false;
-                }
-
-                // notes collect
-                for(let i = noteCubes.length - 1; i >= 0; i--){
-                    const n = noteCubes[i];
-                    n.rotation.y += dt * 2.8;
-                    n.position.y = n.userData.baseY + Math.sin(now * 3.5) * 0.18;
-
-                    if(camera.position.distanceTo(n.position) < 2.45){
-                        const id = n.userData.id;
-                        currentCollectedIds.add(id);
-                        notesCollected = currentCollectedIds.size;
-
-                        spawnParticleBurst(n.position, STEM_COLORS[id] || 0xffffff, 28);
-
-                        n.material.dispose();
-                        scene.remove(n);
-                        noteCubes.splice(i, 1);
-
-                        if(notesCollected === 3){
-                            portal.visible = true;
-                            spawnRipple(portal.position);
-                            showMsg('青色傳送門已開：撤離後，下一區域才會新增音軌', 1700);
-                        }else{
-                            showMsg(`已收集音軌碎片 ${notesCollected} / 3`, 1100);
-                        }
-
-                        updateObjectiveUI();
-                    }
-                }
-
-                // tutorial clear
-                if(currentStatus === STATE.TUTORIAL && notesCollected >= 1){
-                    if(tutorialTimer < 0){
-                        tutorialTimer = 1.1;
-                        showMsg('教學完成', 900);
-                    }
-                    tutorialTimer -= dt;
-                    if(tutorialTimer <= 0){
-                        handleLevelClear();
-                    }
-                }
-
-                // lethal checks
-                if(currentStatus === STATE.GAME && graceTimer <= 0){
-                    const lethalDist = monsterStatus === AI_STATE.DASH
-                        ? activeMonsterDef.dashLethalDist
-                        : activeMonsterDef.lethalDist;
-
-                    if(distToMonster < lethalDist){
-                        let cause = DEATH_REASON.CONTACT;
-                        if(monsterStatus === AI_STATE.DASH) cause = DEATH_REASON.DASH_HIT;
-                        else if(isAlertActive) cause = DEATH_REASON.ALERT_CHASE;
-                        else if(collidesAt(camera.position.x, camera.position.z)) cause = DEATH_REASON.TRAPPED;
-                        endGame(false, cause);
-                    }
-
-                    if(portal.visible && camera.position.distanceTo(portal.position) < 3.4){
-                        endGame(true);
-                    }
-                }
-
-                if(monsterStatus === AI_STATE.CHARGE){
-                    aiTimer += dt;
-                    if(aiTimer > 0.75){
-                        monsterStatus = AI_STATE.DASH;
-                    }
-                }
-
-                _renderPos.copy(camera.position);
-                if(screenShake > 0){
-                    camera.position.x += (Math.random() - 0.5) * screenShake;
-                    camera.position.y += (Math.random() - 0.5) * screenShake * 0.5;
-                    screenShake = Math.max(0, screenShake - dt * 2.3);
-                }
-
-                renderer.render(scene, camera);
-                camera.position.copy(_renderPos);
-            }else{
-                renderer.render(scene, camera);
-            }
-        }
-
-        // =========================
-        // 13) Events
-        // =========================
-        controls.addEventListener('unlock', async () => {
-            if(suppressUnlockPause){
-                suppressUnlockPause = false;
-                return;
-            }
-            if((currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL) && !document.hidden && !isPaused){
-                setPaused(true);
-                if(audioCtx?.state === 'running'){
-                    await audioCtx.suspend();
-                }
-                showMsg('已暫停', 700);
-            }
         });
+    }
 
-        controls.addEventListener('lock', async () => {
-            if(isPaused){
-                if(audioCtx?.state === 'suspended'){
-                    await audioCtx.resume();
-                }
-                clock.getDelta();
-                setPaused(false);
+    function playDeadTone() {
+        if (!audio) return;
+        const now = audio.ctx.currentTime;
+        playOscBurst({
+            when: now,
+            freq: 180,
+            type: 'sawtooth',
+            gain: 0.13,
+            decay: 0.62,
+            sweepTo: 36,
+            bus: audio.sfxBus
+        });
+    }
+
+    function getBeatPhase(nowAudio) {
+        const t = nowAudio - game.audioStartedAt;
+        if (t < 0) return { d: 999, phase: 0 };
+        const mod = ((t % game.beatInterval) + game.beatInterval) % game.beatInterval;
+        const d = Math.min(mod, game.beatInterval - mod);
+        return { d, phase: mod / game.beatInterval };
+    }
+
+    function onBeatStrength(nowAudio) {
+        const { d } = getBeatPhase(nowAudio);
+        const x = clamp(1 - d / game.beatWindow, 0, 1);
+        return x * x * (3 - 2 * x);
+    }
+
+    function movementVector() {
+        let mx = 0, my = 0;
+        if (input.keys.has('KeyW')) my += 1;
+        if (input.keys.has('KeyS')) my -= 1;
+        if (input.keys.has('KeyA')) mx -= 1;
+        if (input.keys.has('KeyD')) mx += 1;
+
+        const len = Math.hypot(mx, my);
+        if (len > 0) {
+            mx /= len;
+            my /= len;
+        }
+        return { mx, my, moving: len > 0 };
+    }
+
+    function audioScheduler() {
+        if (!audio || game.state !== 'playing') return;
+        const now = audio.ctx.currentTime;
+        const lookAhead = 0.15;
+
+        while (game.nextBeatTime < now + lookAhead) {
+            const when = game.nextBeatTime;
+            const beatIndex = game.beatIndex;
+
+            // 正式關：有音樂
+            if (game.mode === 'stage') {
+                scheduleKick(when);
+                scheduleBass(when, beatIndex);
+                schedulePad(when, beatIndex);
+
+                // 加一點八分帽聲，讓節奏存在，但不直接顯示 BPM 輔助
+                scheduleHat(when + game.beatInterval * 0.5, 0.014);
+                if (beatIndex % 2 === 1) scheduleHat(when, 0.012);
             }
-        });
 
-        document.addEventListener('visibilitychange', async () => {
-            if(document.hidden){
-                if(currentStatus === STATE.GAME || currentStatus === STATE.TUTORIAL){
-                    setPaused(true);
-                }
-                if(audioCtx?.state === 'running'){
-                    await audioCtx.suspend();
-                }
-                if(controls.isLocked){
-                    programmaticUnlock();
-                }
+            // 教學關：保留 metronome 輔助
+            if (game.mode === 'tutorial') {
+                scheduleMetronome(when);
             }
-        });
 
-        window.addEventListener('keydown', e => {
-            keys[e.key.toLowerCase()] = true;
-        });
+            const dx = game.goal.x - game.player.x;
+            const dy = game.goal.y - game.player.y;
+            const targetAngle = Math.atan2(dy, dx);
+            const relative = normAngle(targetAngle - game.player.yaw);
+            const dGoal = Math.hypot(dx, dy);
 
-        window.addEventListener('keyup', e => {
-            keys[e.key.toLowerCase()] = false;
-        });
+            // 方向聲兩個模式都保留，因為這是核心導航，不是額外 BPM 顯示器
+            scheduleGuidePulse(when, relative, dGoal);
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+            if (game.mode === 'tutorial') {
+                if (Math.abs(relative) < 0.18) game.guideText = '方向正確';
+                else if (relative > 0) game.guideText = '目標在右邊';
+                else game.guideText = '目標在左邊';
+                game.lastGuideText = performance.now() / 1000;
+            }
 
-        document.getElementById('btn-tutorial').onclick = () => enterState(STATE.TUTORIAL, true);
-        document.getElementById('btn-start').onclick = () => enterState(STATE.GAME, true);
-        document.getElementById('btn-next-stage').onclick = () => enterState(STATE.GAME, false);
-        document.getElementById('btn-resume').onclick = () => { if(isPaused) controls.lock(); };
-        document.getElementById('btn-return-menu').onclick = () => {
-            hideAllOverlays();
-            clearTransientUI();
-            currentStatus = STATE.MENU;
-            currentLevelIdx = 0;
-            resetSession(true);
-            resetMenuScene();
-            elTitle.textContent = 'WSIDO XRTP ECHO: SOUND CELL';
-            elMenu.style.display = 'flex';
-            elBtnGroup.style.display = 'block';
-        };
+            game.beatIndex++;
+            game.nextBeatTime += game.beatInterval;
+        }
+    }
 
-        // boot
-        loadAudio();
-        animate();
-    </script>
+    function startGame() {
+        ensureAudio();
+        resetWorld();
+        game.started = true;
+        panel.classList.add('hidden');
+        setTimeout(() => overlay.style.display = 'none', 280);
+        centerText.textContent = game.mode === 'tutorial' ? 'FOLLOW THE PULSE' : 'LISTEN';
+    }
+
+    function update(dt) {
+        if (game.state !== 'playing' || !audio) return;
+
+        game.time += dt;
+
+        const nowAudio = audio.ctx.currentTime;
+        const beat = onBeatStrength(nowAudio);
+
+        game.beatFlash = Math.max(game.beatFlash - dt * 2.6, 0);
+        if (beat > 0.88) game.beatFlash = Math.max(game.beatFlash, beat);
+
+        game.successPulse = Math.max(0, game.successPulse - dt * 2.2);
+        game.winPulse = Math.max(0, game.winPulse - dt * 1.5);
+        game.deadPulse = Math.max(0, game.deadPulse - dt * 1.5);
+
+        const { mx, my, moving } = movementVector();
+        const sprint = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
+
+        let baseSpeed = 60;
+        let pulseBoost = lerp(0.32, 2.25, beat);
+        let speed = baseSpeed * pulseBoost;
+        if (sprint) speed *= 1.55;
+
+        // ===== 修正後的移動方向 =====
+        // 黃線 = player.yaw 朝向
+        // W = 往黃線方向前進
+        const cos = Math.cos(game.player.yaw);
+        const sin = Math.sin(game.player.yaw);
+
+        const forwardX = cos;
+        const forwardY = sin;
+        const rightX = -sin;
+        const rightY = cos;
+
+        const worldX = forwardX * my + rightX * mx;
+        const worldY = forwardY * my + rightY * mx;
+
+        game.player.x += worldX * speed * dt;
+        game.player.y += worldY * speed * dt;
+        game.player.speed = moving ? speed : 0;
+
+        if (moving) {
+            if (beat > 0.72) {
+                game.threat -= 0.18 * dt;
+                game.successPulse = 1;
+                centerText.textContent = game.mode === 'tutorial' ? 'ON BEAT' : '';
+                if (game.time % (game.beatInterval * 0.8) < dt) playFootstep(true);
+            } else if (beat < 0.22) {
+                game.threat += 0.34 * dt;
+                centerText.textContent = game.mode === 'tutorial' ? 'OFF BEAT' : '';
+                if (game.time % 0.22 < dt) playFootstep(false);
+            } else {
+                game.threat += 0.05 * dt;
+                if (game.mode === 'tutorial') centerText.textContent = '';
+            }
+
+            if (sprint) game.threat += 0.08 * dt;
+        } else {
+            game.threat -= 0.09 * dt;
+            if (game.mode === 'tutorial') centerText.textContent = '';
+        }
+
+        // 撞世界邊界
+        const r = Math.hypot(game.player.x, game.player.y);
+        if (r > game.worldRadius) {
+            const ang = Math.atan2(game.player.y, game.player.x);
+            game.player.x = Math.cos(ang) * game.worldRadius;
+            game.player.y = Math.sin(ang) * game.worldRadius;
+            game.threat += 0.1 * dt;
+        }
+
+        game.threat = clamp(game.threat, 0, 1);
+
+        if (game.threat > 0.55 && Math.random() < dt * 1.1) {
+            playThreatBlip(game.threat);
+        }
+
+        const dGoal = dist(game.player.x, game.player.y, game.goal.x, game.goal.y);
+        if (dGoal <= game.goalRadius) {
+            game.state = 'win';
+            game.winPulse = 1;
+            game.message = '你抵達出口';
+            centerText.textContent = 'ESCAPE CONFIRMED';
+            playWinTone();
+        }
+
+        if (game.threat >= 1) {
+            game.state = 'dead';
+            game.deadPulse = 1;
+            game.message = '你被聲音吞掉了';
+            centerText.textContent = 'SIGNAL LOST';
+            playDeadTone();
+        }
+    }
+
+    function drawBackground() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawPulseRing() {
+        const intensity = game.beatFlash * 0.75 + game.successPulse * 0.35;
+        if (intensity <= 0.01 && game.state === 'playing') return;
+
+        const r = 18 + (1 - game.beatFlash) * 72;
+
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, TAU);
+        ctx.strokeStyle = `rgba(109,240,255,${0.08 + intensity * 0.18})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.2, 0, TAU);
+        ctx.fillStyle = `rgba(220,240,255,${0.24 + intensity * 0.2})`;
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    function drawThreatVignette() {
+        const a = game.threat * 0.34 + game.deadPulse * 0.45;
+        if (a <= 0.01) return;
+        const g = ctx.createRadialGradient(
+            W / 2, H / 2, Math.min(W, H) * 0.22,
+            W / 2, H / 2, Math.max(W, H) * 0.72
+        );
+        g.addColorStop(0, `rgba(255,0,0,0)`);
+        g.addColorStop(1, `rgba(255,40,40,${a})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawNoise() {
+        const amount = Math.floor(60 + game.threat * 420 + game.deadPulse * 560);
+        for (let i = 0; i < amount; i++) {
+            const x = Math.random() * W;
+            const y = Math.random() * H;
+            const alpha = Math.random() * (0.02 + game.threat * 0.06 + game.deadPulse * 0.09);
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            ctx.fillRect(x, y, 1.2, 1.2);
+        }
+    }
+
+    function drawStateFlash() {
+        if (game.winPulse > 0.01) {
+            ctx.fillStyle = `rgba(109,240,255,${game.winPulse * 0.22})`;
+            ctx.fillRect(0, 0, W, H);
+        }
+        if (game.deadPulse > 0.01) {
+            ctx.fillStyle = `rgba(255,50,50,${game.deadPulse * 0.2})`;
+            ctx.fillRect(0, 0, W, H);
+        }
+    }
+
+    function drawDebugMap() {
+        if (!game.showDebug) return;
+
+        const size = 220;
+        const pad = 18;
+        const x = W - size - pad;
+        const y = H - size - pad;
+        const s = size / (game.worldRadius * 2);
+
+        ctx.save();
+
+        ctx.fillStyle = 'rgba(6,10,18,0.76)';
+        ctx.fillRect(x, y, size, size);
+        ctx.strokeStyle = 'rgba(130,160,255,0.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, size, size);
+
+        // 世界圓
+        ctx.beginPath();
+        ctx.arc(x + size / 2, y + size / 2, game.worldRadius * s, 0, TAU);
+        ctx.strokeStyle = 'rgba(100,140,255,0.24)';
+        ctx.stroke();
+
+        // 目標
+        ctx.beginPath();
+        ctx.arc(
+            x + size / 2 + game.goal.x * s,
+            y + size / 2 + game.goal.y * s,
+            5,
+            0,
+            TAU
+        );
+        ctx.fillStyle = '#6df0ff';
+        ctx.fill();
+
+        // 玩家
+        const px = x + size / 2 + game.player.x * s;
+        const py = y + size / 2 + game.player.y * s;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, TAU);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        // 黃線 = 朝向
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(
+            px + Math.cos(game.player.yaw) * 18,
+            py + Math.sin(game.player.yaw) * 18
+        );
+        ctx.strokeStyle = '#ffcc66';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.font = '12px Segoe UI';
+        ctx.fillStyle = '#9ab2ff';
+        ctx.fillText(`DEBUG / ${game.mode.toUpperCase()}`, x + 10, y + 16);
+
+        ctx.restore();
+    }
+
+    function render() {
+        drawBackground();
+        drawPulseRing();
+        drawThreatVignette();
+        drawNoise();
+        drawStateFlash();
+        drawDebugMap();
+    }
+
+    function updateHUD() {
+        const dGoal = dist(game.player.x, game.player.y, game.goal.x, game.goal.y);
+        const yawDeg = ((game.player.yaw * 180 / Math.PI) % 360 + 360) % 360;
+        const threatPercent = Math.round(game.threat * 100);
+
+        let threatClass = 'good';
+        if (threatPercent >= 70) threatClass = 'warn';
+        else if (threatPercent >= 35) threatClass = 'gold';
+
+        if (game.mode === 'tutorial') {
+            hudLeft.innerHTML = `
+                <span class="label">模式</span>：<span class="good">Tutorial</span><br>
+                <span class="label">狀態</span>：${game.state === 'playing' ? '<span class="good">探索中</span>' :
+                    game.state === 'win' ? '<span class="good">已逃出</span>' :
+                    game.state === 'dead' ? '<span class="warn">死亡</span>' : '待機'}<br>
+                <span class="label">方向提示</span>：${game.guideText || '等待下一拍'}<br>
+                <span class="label">訊息</span>：${game.message}
+            `;
+        } else {
+            hudLeft.innerHTML = `
+                <span class="label">模式</span>：<span class="gold">Stage</span><br>
+                <span class="label">狀態</span>：${game.state === 'playing' ? '<span class="gold">正式關</span>' :
+                    game.state === 'win' ? '<span class="good">已逃出</span>' :
+                    game.state === 'dead' ? '<span class="warn">死亡</span>' : '待機'}<br>
+                <span class="label">訊息</span>：${game.message}<br>
+                <span class="label">提示</span>：音樂存在時，不再顯示 BPM 輔助
+            `;
+        }
+
+        hudRight.innerHTML = `
+            <span class="label">危險值</span>：<span class="${threatClass}">${threatPercent}%</span><br>
+            <span class="label">朝向</span>：${yawDeg.toFixed(0)}°<br>
+            <span class="label">速度</span>：${Math.round(game.player.speed)}${game.showDebug ? `<br><span class="label">距離</span>：${Math.round(dGoal)}` : ''}
+        `;
+    }
+
+    function loop(tMs) {
+        const now = tMs / 1000;
+        const dt = Math.min(0.033, now - (game.lastFrame || now));
+        game.lastFrame = now;
+
+        update(dt);
+        render();
+        updateHUD();
+
+        requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    canvas.addEventListener('click', () => {
+        if (!game.started) {
+            startGame();
+        }
+        if (document.pointerLockElement !== canvas) {
+            canvas.requestPointerLock();
+        }
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+        input.locked = document.pointerLockElement === canvas;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!input.locked || game.state !== 'playing') return;
+        game.player.yaw += e.movementX * 0.0026;
+    });
+
+    document.addEventListener('keydown', (e) => {
+        input.keys.add(e.code);
+
+        if (e.code === 'Digit1') {
+            game.mode = 'tutorial';
+            updateModeUI();
+            if (!game.started) centerText.textContent = 'TUTORIAL SELECTED';
+        }
+
+        if (e.code === 'Digit2') {
+            game.mode = 'stage';
+            updateModeUI();
+            if (!game.started) centerText.textContent = 'STAGE SELECTED';
+        }
+
+        if (e.code === 'KeyR') {
+            ensureAudio();
+            resetWorld();
+            centerText.textContent = game.mode === 'tutorial' ? 'REBOOT / TUTORIAL' : 'REBOOT / STAGE';
+            if (!game.started) {
+                game.started = true;
+                panel.classList.add('hidden');
+                setTimeout(() => overlay.style.display = 'none', 280);
+            }
+        }
+
+        if (e.code === 'F2') {
+            game.showDebug = !game.showDebug;
+            debugBadge.classList.toggle('show', game.showDebug);
+        }
+
+        if ((game.state === 'win' || game.state === 'dead') && e.code === 'Space') {
+            ensureAudio();
+            resetWorld();
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        input.keys.delete(e.code);
+    });
+
+    updateModeUI();
+    render();
+})();
+</script>
 </body>
 </html>
