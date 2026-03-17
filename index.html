@@ -170,13 +170,13 @@
 <canvas id="game"></canvas>
 
 <div id="musicPickerWrap">
-    <label for="musicPicker">Level 1 音檔：</label>
+    <label for="musicPicker">Level 1 音檔（MP3）：</label>
     <input id="musicPicker" type="file" accept=".wav,.mp3,.ogg,.m4a,.aac,.flac">
 </div>
 
-<div id="trackStatus">TRACK: TRYING ./1.wav</div>
+<div id="trackStatus">TRACK: TRYING ./1.mp3</div>
 
-<audio id="musicSource" preload="auto" playsinline src="./1.wav"></audio>
+<audio id="musicSource" preload="auto" playsinline src="./1.mp3"></audio>
 
 <div id="overlay">
     <div id="panel">
@@ -185,7 +185,7 @@
 這裡沒有怪物，只有黑暗、節拍，和遠方的歌。
 
 玩法：
-• 如果 1.wav 跟 HTML 放同資料夾，會自動嘗試載入
+• 如果 1.mp3 跟 HTML 放同資料夾，會自動嘗試載入
 • 如果沒載到，就在左下角手動選音檔
 • 點擊畫面開始並鎖定滑鼠
 • 滑鼠左右：轉向（只能水平 360°）
@@ -201,7 +201,7 @@
 • 視覺圈不會自動跟 BPM 跳；只有你自己踏步時才出現
 • 前段有少量教學輔助，之後會自動退場
 • 沒有怪物，也沒有死亡條，目標只有一個：找到音源</div>
-        <div class="hint">直接點畫面開始；如果沒聲音，再用左下角選 1.wav</div>
+        <div class="hint">直接點畫面開始；如果沒聲音，再用左下角選 1.mp3</div>
     </div>
 </div>
 
@@ -1060,7 +1060,7 @@
         }
     });
 
-    // 自動嘗試同資料夾的 1.wav
+    // 自動嘗試同資料夾的 1.mp3
     setTimeout(() => {
         if (musicEl.getAttribute('src')) {
             musicEl.load();
