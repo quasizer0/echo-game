@@ -3,1040 +3,839 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>BLIND BEAT / LEVEL 0 + LEVEL 1</title>
+<title>Blind Beat</title>
 <style>
-:root{
-    --bg:#03050a;
-    --fg:#edf3ff;
-    --sub:#8fa0c4;
-    --good:#79efff;
-    --warn:#ff8d82;
-    --gold:#ffd267;
-    --panel:rgba(6,10,18,.86);
+  :root{
+    --bg:#020304;
+    --panel:rgba(10,14,20,.82);
     --line:rgba(255,255,255,.08);
-    --soft:rgba(255,255,255,.04);
-}
-*{box-sizing:border-box;}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--fg);font-family:"Segoe UI","Noto Sans TC",sans-serif;}
-canvas{display:block;width:100vw;height:100vh;background:#000;cursor:crosshair;}
-.hidden{display:none !important;}
-.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:20;background:rgba(0,0,0,.74);backdrop-filter:blur(10px);}
-.panel{width:min(760px,calc(100vw - 28px));background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:26px 24px;box-shadow:0 24px 90px rgba(0,0,0,.45);}
-.title{font-size:clamp(28px,4vw,46px);font-weight:900;letter-spacing:.08em;margin:0 0 8px 0;}
-.subtitle{font-size:12px;color:var(--sub);letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px;}
-.desc{font-size:15px;line-height:1.72;color:#d8e2f8;white-space:pre-line;}
-.muted{color:var(--sub);}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
-.card{border:1px solid var(--line);border-radius:18px;padding:16px;background:var(--soft);}
-.card h3{margin:0 0 8px 0;font-size:18px;}
-.card p{margin:0;color:#cad6f0;line-height:1.65;font-size:14px;white-space:pre-line;}
-.card .tag{display:inline-block;margin-bottom:10px;padding:4px 8px;border-radius:999px;background:rgba(123,244,255,.08);border:1px solid rgba(123,244,255,.2);font-size:12px;color:var(--good);}
-.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;}
-button{appearance:none;border:none;border-radius:14px;padding:12px 16px;font-size:14px;font-weight:700;color:#091018;background:#e6eeff;cursor:pointer;transition:transform .08s ease, opacity .15s ease, background .15s ease;}
-button:hover{transform:translateY(-1px);}
-button.secondary{background:rgba(255,255,255,.06);color:#eef4ff;border:1px solid var(--line);}
-button.gold{background:var(--gold);color:#191100;}
-button.warn{background:#ff9188;color:#290605;}
-button:disabled{opacity:.45;cursor:not-allowed;transform:none;}
-#bootStatus,#loadError,#pauseMeta,#menuMeta,#finishMeta{font-size:14px;line-height:1.7;color:#cfdbf4;white-space:pre-line;}
-#loadBar{width:100%;height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;border:1px solid var(--line);margin:16px 0 10px 0;}
-#loadFill{height:100%;width:0%;background:linear-gradient(90deg,#7bf4ff,#ffd267);transition:width .2s ease;}
-#hud{position:fixed;inset:0;pointer-events:none;padding:14px 16px;z-index:5;}
-.hud-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
-.hud-box{min-width:160px;max-width:300px;background:rgba(5,8,14,.52);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;backdrop-filter:blur(6px);font-size:13px;line-height:1.55;color:#d7e1f3;}
-.hud-right{text-align:right;}
-.label{color:#8da1d1;}
-.good{color:var(--good);}
-.gold{color:var(--gold);}
-.warn{color:var(--warn);}
-#centerText{position:fixed;left:50%;top:76%;transform:translate(-50%,-50%);min-width:240px;text-align:center;letter-spacing:.16em;font-size:13px;color:rgba(235,242,255,.94);text-shadow:0 0 10px rgba(255,255,255,.16);pointer-events:none;z-index:6;}
-#debugBadge{position:fixed;left:16px;bottom:16px;background:rgba(0,0,0,.34);border:1px solid var(--line);color:#9ab2ff;padding:8px 10px;border-radius:10px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .18s ease;z-index:6;}
-#debugBadge.show{opacity:1;}
-.kv{display:grid;grid-template-columns:86px 1fr;gap:6px 10px;align-items:start;font-size:14px;color:#d9e3f9;margin-top:14px;}
-.pill{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:#dce6ff;}
-.small{font-size:12px;color:var(--sub);}
-.hero-note{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-.hero-note .pill{background:rgba(123,244,255,.07);}
-.compact{max-width:560px;}
-.center-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:18px;}
-@media (max-width:700px){
-    .panel{padding:22px 18px;border-radius:20px;}
-    .hud-top{flex-direction:column;align-items:stretch;}
-    .hud-box{max-width:none;}
-}
+    --text:#ecf2ff;
+    --muted:#9aa8c7;
+    --cyan:#74f1ff;
+    --gold:#ffd76b;
+    --red:#ff6f7e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--text);font-family:Inter,"Noto Sans TC","Segoe UI",sans-serif}
+  canvas{display:block;width:100vw;height:100vh;background:#000}
+  .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at center, rgba(22,28,40,.30), rgba(0,0,0,.88));}
+  .screen.show{display:flex}
+  .panel{width:min(760px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:28px;backdrop-filter:blur(16px);box-shadow:0 18px 60px rgba(0,0,0,.45)}
+  .title{font-size:clamp(26px,4vw,40px);font-weight:900;letter-spacing:.08em;margin:0 0 10px}
+  .subtitle{color:var(--muted);line-height:1.7;font-size:15px;margin:0}
+  .statusline{margin-top:18px;color:var(--cyan);font-weight:700;font-size:14px}
+  .button-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+  button{appearance:none;border:0;background:#111927;color:var(--text);border:1px solid rgba(255,255,255,.08);padding:12px 16px;border-radius:14px;font:inherit;font-weight:800;cursor:pointer;transition:.18s transform,.18s background,.18s border-color}
+  button:hover{transform:translateY(-1px);background:#172133;border-color:rgba(116,241,255,.30)}
+  button.primary{background:linear-gradient(180deg,#122133,#0d1724);border-color:rgba(116,241,255,.34);color:#eaffff}
+  button.ghost{background:rgba(255,255,255,.04)}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:22px}
+  .card{border:1px solid var(--line);border-radius:18px;padding:18px;background:rgba(255,255,255,.03)}
+  .card h3{margin:0 0 8px;font-size:20px}
+  .card p{margin:0;color:var(--muted);line-height:1.65;font-size:14px}
+  .tag{display:inline-block;margin-bottom:10px;padding:5px 10px;border-radius:999px;background:rgba(116,241,255,.08);border:1px solid rgba(116,241,255,.18);color:var(--cyan);font-size:12px;font-weight:800;letter-spacing:.08em}
+  #hud{position:fixed;inset:0;pointer-events:none;padding:18px;display:none}
+  #hud.show{display:block}
+  .hud-block{position:absolute;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;backdrop-filter:blur(8px)}
+  #hudTopLeft{left:18px;top:18px;min-width:190px}
+  #hudTopRight{right:18px;top:18px;text-align:right;min-width:180px}
+  #hudBottom{left:50%;bottom:20px;transform:translateX(-50%);min-width:300px;text-align:center}
+  .hudLabel{color:#8ca0cd;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  .hudValue{margin-top:4px;font-size:14px;font-weight:800}
+  #syncOuter{width:220px;height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;border:1px solid rgba(255,255,255,.05);margin:8px auto 0}
+  #syncFill{height:100%;width:0%;background:linear-gradient(90deg,#ff6f7e,#ffd76b,#74f1ff);box-shadow:0 0 12px rgba(116,241,255,.3)}
+  #judgeText{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);font-weight:900;letter-spacing:.14em;font-size:32px;text-shadow:0 0 18px rgba(255,255,255,.12);pointer-events:none;opacity:0;transition:opacity .12s linear}
+  #judgeText.show{opacity:1}
+  #centerHint{position:fixed;left:50%;top:73%;transform:translate(-50%,-50%);font-size:14px;letter-spacing:.14em;color:rgba(236,242,255,.86);pointer-events:none;min-width:280px;text-align:center}
+  #miniNotice{position:fixed;right:18px;bottom:18px;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:8px 10px;font-size:12px;color:#b7c4e3;display:none}
+  #miniNotice.show{display:block}
+  .small{font-size:13px;color:var(--muted);line-height:1.6;margin-top:12px}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 
-<div id="hud" class="hidden">
-    <div class="hud-top">
-        <div class="hud-box" id="hudLeft">等待進入關卡...</div>
-        <div class="hud-box hud-right" id="hudRight">音訊：未啟動</div>
+<div id="bootScreen" class="screen show">
+  <div class="panel">
+    <h1 class="title">BLIND BEAT</h1>
+    <p class="subtitle">先確認音訊環境，再載入 1.mp3。資源就緒後才進選關。</p>
+    <div id="bootStatus" class="statusline">點擊開始</div>
+    <div class="button-row">
+      <button id="bootBtn" class="primary">開始</button>
+      <button id="retryBtn" class="ghost" style="display:none">重試載入</button>
     </div>
-</div>
-<div id="centerText"></div>
-<div id="debugBadge">DEBUG MAP: ON</div>
-
-
-<div id="bootOverlay" class="overlay">
-    <div class="panel compact">
-        <div class="subtitle">Loading</div>
-        <h1 class="title">BLIND BEAT</h1>
-        <div class="desc">先確認 <b>1.mp3</b> 已經載好，再進選關。</div>
-        <div id="loadBar"><div id="loadFill"></div></div>
-        <div id="bootStatus">按下方按鈕開始載入。</div>
-        <div id="loadError" class="warn" style="margin-top:8px;"></div>
-        <div class="actions">
-            <button id="bootBtn" class="gold">開始</button>
-            <button id="retryBtn" class="secondary hidden">重試</button>
-        </div>
-        <div class="small" style="margin-top:12px;">請把 <b>1.mp3</b> 和 HTML 放在同一路徑。</div>
-    </div>
+  </div>
 </div>
 
-
-<div id="menuOverlay" class="overlay hidden">
-    <div class="panel">
-        <div class="subtitle">Select Level</div>
-        <h1 class="title">選擇關卡</h1>
-        <div id="menuMeta">音檔已載入，選一關開始。</div>
-        <div class="hero-note">
-            <span class="pill">滑鼠左右轉向</span>
-            <span class="pill">W A S D 移動</span>
-            <span class="pill">Esc 暫停</span>
-        </div>
-        <div class="row" style="margin-top:18px;">
-            <div class="card">
-                <div class="tag">LEVEL 0</div>
-                <h3>教學關</h3>
-                <p>有方向、距離、拍點提示。
-先在這裡學會節奏與聽聲辨位。</p>
-                <div class="actions"><button id="startLevel0Btn" class="gold">開始</button></div>
-            </div>
-            <div class="card">
-                <div class="tag">LEVEL 1</div>
-                <h3>正式關</h3>
-                <p>拔掉硬提示。
-靠穩定度、清晰度和回音去找真正的聲音。</p>
-                <div class="actions"><button id="startLevel1Btn" class="gold">開始</button></div>
-            </div>
-        </div>
+<div id="menuScreen" class="screen">
+  <div class="panel">
+    <h1 class="title">選擇關卡</h1>
+    <p class="subtitle">Level 0 先學規則。Level 1 再把硬提示拿掉。</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="tag">LEVEL 0</div>
+        <h3>90 BPM / A → B</h3>
+        <p>沒有音樂。只有節拍。<br>按 <b>Space</b> 打拍維持狀態，再走到終點。</p>
+        <div class="button-row"><button id="startL0" class="primary">開始</button></div>
+      </div>
+      <div class="card">
+        <div class="tag">LEVEL 1</div>
+        <h3>1.mp3 / 正式關</h3>
+        <p>沒有方向字。沒有 BPM 提示。<br>聽聲辨位，同時用節奏維持狀態。</p>
+        <div class="button-row"><button id="startL1" class="primary">開始</button></div>
+      </div>
     </div>
+    <div class="small">操作：滑鼠轉向 / W A S D 移動 / Space 打拍 / Esc 暫停</div>
+  </div>
 </div>
 
-
-<div id="pauseOverlay" class="overlay hidden">
-    <div class="panel compact">
-        <div class="subtitle">Paused</div>
-        <h1 class="title">已暫停</h1>
-        <div id="pauseMeta">按繼續回到遊戲。</div>
-        <div class="center-actions">
-            <button id="resumeBtn" class="gold">繼續</button>
-            <button id="restartBtn" class="secondary">重開本關</button>
-            <button id="backToMenuBtn" class="secondary">回選關</button>
-        </div>
+<div id="pauseScreen" class="screen">
+  <div class="panel" style="max-width:520px">
+    <h1 class="title">暫停</h1>
+    <p class="subtitle">回到節奏，再繼續。</p>
+    <div class="button-row">
+      <button id="resumeBtn" class="primary">繼續</button>
+      <button id="restartBtn" class="ghost">重開本關</button>
+      <button id="toMenuBtn" class="ghost">回選關</button>
     </div>
+  </div>
 </div>
 
-
-<div id="finishOverlay" class="overlay hidden">
-    <div class="panel compact">
-        <div class="subtitle">Clear</div>
-        <h1 class="title" id="finishTitle">完成</h1>
-        <div id="finishMeta">你通過了關卡。</div>
-        <div class="center-actions">
-            <button id="finishRestartBtn" class="gold">再玩一次</button>
-            <button id="finishMenuBtn" class="secondary">回選關</button>
-        </div>
+<div id="resultScreen" class="screen">
+  <div class="panel" style="max-width:560px">
+    <h1 id="resultTitle" class="title">完成</h1>
+    <p id="resultSubtitle" class="subtitle">你成功了。</p>
+    <div class="button-row">
+      <button id="nextActionBtn" class="primary">回選關</button>
+      <button id="retryLevelBtn" class="ghost">再玩一次</button>
     </div>
+  </div>
 </div>
 
+<div id="hud">
+  <div id="hudTopLeft" class="hud-block">
+    <div class="hudLabel">Level</div>
+    <div id="hudLevel" class="hudValue">-</div>
+  </div>
+  <div id="hudTopRight" class="hud-block">
+    <div class="hudLabel">Guide</div>
+    <div id="hudGuide" class="hudValue">-</div>
+  </div>
+  <div id="hudBottom" class="hud-block">
+    <div id="hudMain" class="hudValue">SPACE 打拍</div>
+    <div id="syncOuter"><div id="syncFill"></div></div>
+  </div>
+</div>
+
+<div id="judgeText"></div>
+<div id="centerHint"></div>
+<div id="miniNotice">Esc：暫停</div>
 
 <script>
 (() => {
-    const TAU = Math.PI * 2;
-    const BPM = 103;
-    const BEAT = 60 / BPM;
-    const BEAT_ZERO = 0.0047; // 依目前音檔估的 downbeat 起點
-    const TRACK_URL = './1.mp3';
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const bootScreen = document.getElementById('bootScreen');
+  const menuScreen = document.getElementById('menuScreen');
+  const pauseScreen = document.getElementById('pauseScreen');
+  const resultScreen = document.getElementById('resultScreen');
+  const bootStatus = document.getElementById('bootStatus');
+  const bootBtn = document.getElementById('bootBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const startL0 = document.getElementById('startL0');
+  const startL1 = document.getElementById('startL1');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const toMenuBtn = document.getElementById('toMenuBtn');
+  const retryLevelBtn = document.getElementById('retryLevelBtn');
+  const nextActionBtn = document.getElementById('nextActionBtn');
+  const resultTitle = document.getElementById('resultTitle');
+  const resultSubtitle = document.getElementById('resultSubtitle');
 
-    const canvas = document.getElementById('game');
-    const ctx2d = canvas.getContext('2d');
+  const hud = document.getElementById('hud');
+  const hudLevel = document.getElementById('hudLevel');
+  const hudGuide = document.getElementById('hudGuide');
+  const hudMain = document.getElementById('hudMain');
+  const syncFill = document.getElementById('syncFill');
+  const judgeText = document.getElementById('judgeText');
+  const centerHint = document.getElementById('centerHint');
+  const miniNotice = document.getElementById('miniNotice');
 
-    const hud = document.getElementById('hud');
-    const hudLeft = document.getElementById('hudLeft');
-    const hudRight = document.getElementById('hudRight');
-    const centerText = document.getElementById('centerText');
-    const debugBadge = document.getElementById('debugBadge');
+  const TAU = Math.PI * 2;
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  const normAngle = a => {
+    while (a > Math.PI) a -= TAU;
+    while (a < -Math.PI) a += TAU;
+    return a;
+  };
+  const dist = (x1,y1,x2,y2)=>Math.hypot(x2-x1,y2-y1);
 
-    const bootOverlay = document.getElementById('bootOverlay');
-    const menuOverlay = document.getElementById('menuOverlay');
-    const pauseOverlay = document.getElementById('pauseOverlay');
-    const finishOverlay = document.getElementById('finishOverlay');
+  let W = innerWidth, H = innerHeight, DPR = Math.min(devicePixelRatio || 1, 2);
+  function resize(){
+    W = innerWidth; H = innerHeight; DPR = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  addEventListener('resize', resize); resize();
 
-    const bootBtn = document.getElementById('bootBtn');
-    const retryBtn = document.getElementById('retryBtn');
-    const loadFill = document.getElementById('loadFill');
-    const bootStatus = document.getElementById('bootStatus');
-    const loadError = document.getElementById('loadError');
-
-    const startLevel0Btn = document.getElementById('startLevel0Btn');
-    const startLevel1Btn = document.getElementById('startLevel1Btn');
-    const menuMeta = document.getElementById('menuMeta');
-
-    const resumeBtn = document.getElementById('resumeBtn');
-    const restartBtn = document.getElementById('restartBtn');
-    const backToMenuBtn = document.getElementById('backToMenuBtn');
-    const pauseMeta = document.getElementById('pauseMeta');
-
-    const finishTitle = document.getElementById('finishTitle');
-    const finishMeta = document.getElementById('finishMeta');
-    const finishRestartBtn = document.getElementById('finishRestartBtn');
-    const finishMenuBtn = document.getElementById('finishMenuBtn');
-
-    let W = window.innerWidth;
-    let H = window.innerHeight;
-    let DPR = Math.min(window.devicePixelRatio || 1, 2);
-
-    function resize() {
-        W = window.innerWidth;
-        H = window.innerHeight;
-        DPR = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = Math.floor(W * DPR);
-        canvas.height = Math.floor(H * DPR);
-        ctx2d.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const LEVELS = {
+    0: {
+      id: 0,
+      title: 'LEVEL 0',
+      bpm: 90,
+      beatOffset: 0,
+      useTrack: false,
+      start: {x: 0, y: 0, yaw: 0},
+      goal: {x: 900, y: 0, r: 58},
+      worldRadius: 1200,
+      baseSpeed: 120,
+      syncDrainMove: 6,
+      syncDrainIdle: 1.6,
+      beatMissPenalty: 9,
+      perfectGain: 14,
+      goodGain: 8,
+      missPenaltyTap: 12,
+      listenBeats: 8,
+    },
+    1: {
+      id: 1,
+      title: 'LEVEL 1',
+      bpm: 103,
+      beatOffset: 19.2427,
+      useTrack: true,
+      start: {x: 0, y: 0, yaw: 0},
+      goalNodes: [
+        {x: 220, y: -180, r: 90},
+        {x: 520, y: 120, r: 100},
+        {x: 820, y: -120, r: 100},
+        {x: 1060, y: 40, r: 70},
+      ],
+      worldRadius: 1350,
+      baseSpeed: 100,
+      syncDrainMove: 7,
+      syncDrainIdle: 2,
+      beatMissPenalty: 10,
+      perfectGain: 12,
+      goodGain: 7,
+      missPenaltyTap: 13,
+      listenBeats: 4,
     }
-    resize();
-    window.addEventListener('resize', resize);
+  };
 
-    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const lerp = (a, b, t) => a + (b - a) * t;
-    const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
-    const easeOut = t => 1 - Math.pow(1 - t, 2);
+  const state = {
+    screen: 'boot', // boot menu play pause result
+    levelId: null,
+    resultType: null,
+    started: false,
+    assetsReady: false,
+    paused: false,
+    pointerWanted: false,
+    judgeShow: 0,
+    judgeLabel: '',
+    judgeColor: '#ecf2ff',
+    tapRing: 0,
+    tapRingStrong: 0,
+    winFlash: 0,
+    missFlash: 0,
+    beatPulse: 0,
+    guidePulse: 0,
+    level1NodeIndex: 0,
+    playPhase: 'idle',
+    runStartBeat: 0,
+  };
 
-    function normAngle(a) {
-        while (a > Math.PI) a -= TAU;
-        while (a < -Math.PI) a += TAU;
-        return a;
+  const input = { keys: new Set(), locked: false };
+
+  const player = { x:0, y:0, yaw:0, speed:0, sync:100 };
+
+  const rhythm = {
+    anchor: 0,
+    interval: 60 / 90,
+    lastProcessedBeat: -1,
+    tappedBeats: new Set(),
+    lastTapBeat: null,
+  };
+
+  const audio = {
+    ctx: null,
+    master: null,
+    sfxBus: null,
+    musicBus: null,
+    musicLP: null,
+    musicPan: null,
+    musicGain: null,
+    trackBuffer: null,
+    activeTrack: null,
+    trackStartContext: 0,
+    trackOffset: 0,
+    loading: false,
+  };
+
+  function showOnly(screen){
+    [bootScreen, menuScreen, pauseScreen, resultScreen].forEach(el=>el.classList.remove('show'));
+    if (screen === 'boot') bootScreen.classList.add('show');
+    if (screen === 'menu') menuScreen.classList.add('show');
+    if (screen === 'pause') pauseScreen.classList.add('show');
+    if (screen === 'result') resultScreen.classList.add('show');
+    hud.classList.toggle('show', screen === 'play');
+    miniNotice.classList.toggle('show', screen === 'play');
+    state.screen = screen;
+    if (screen !== 'play') releasePointer();
+  }
+
+  function releasePointer(){
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+  }
+
+  function ensureAudio(){
+    if (audio.ctx) return;
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    audio.ctx = ac;
+    audio.master = ac.createGain();
+    audio.master.gain.value = 0.92;
+    audio.master.connect(ac.destination);
+    audio.sfxBus = ac.createGain();
+    audio.sfxBus.gain.value = 0.95;
+    audio.sfxBus.connect(audio.master);
+    audio.musicBus = ac.createGain();
+    audio.musicBus.gain.value = 1;
+    audio.musicPan = ac.createStereoPanner();
+    audio.musicLP = ac.createBiquadFilter();
+    audio.musicLP.type = 'lowpass';
+    audio.musicLP.frequency.value = 18000;
+    audio.musicGain = ac.createGain();
+    audio.musicGain.gain.value = 0.0001;
+    audio.musicBus.connect(audio.musicLP);
+    audio.musicLP.connect(audio.musicGain);
+    audio.musicGain.connect(audio.musicPan);
+    audio.musicPan.connect(audio.master);
+  }
+
+  async function loadAssets(){
+    if (audio.loading) return;
+    audio.loading = true;
+    retryBtn.style.display = 'none';
+    bootStatus.textContent = '建立音訊環境…';
+    try {
+      ensureAudio();
+      await audio.ctx.resume();
+      bootStatus.textContent = '載入 1.mp3…';
+      const res = await fetch('./1.mp3', { cache: 'no-store' });
+      if (!res.ok) throw new Error('找不到 1.mp3');
+      const arr = await res.arrayBuffer();
+      bootStatus.textContent = '解碼音軌…';
+      audio.trackBuffer = await audio.ctx.decodeAudioData(arr.slice(0));
+      state.assetsReady = true;
+      bootStatus.textContent = '資源已就緒';
+      showOnly('menu');
+    } catch (err) {
+      console.error(err);
+      state.assetsReady = false;
+      bootStatus.textContent = `載入失敗：${err.message}`;
+      retryBtn.style.display = 'inline-flex';
+    } finally {
+      audio.loading = false;
     }
+  }
 
-    function describeDirection(angle) {
-        const a = normAngle(angle);
-        const abs = Math.abs(a);
-        if (abs < 0.18) return '正前方';
-        if (abs > 2.7) return '正後方';
-        if (a > 0) {
-            if (abs < 0.7) return '右前';
-            if (abs < 1.6) return '右側';
-            return '右後';
+  function makeOsc({when, freq=440, type='sine', gain=0.08, decay=0.12, pan=0, sweep=null}){
+    const osc = audio.ctx.createOscillator();
+    const g = audio.ctx.createGain();
+    const p = audio.ctx.createStereoPanner();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, when);
+    if (sweep) osc.frequency.exponentialRampToValueAtTime(Math.max(1, sweep), when + decay);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(gain, when + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
+    p.pan.value = clamp(pan, -1, 1);
+    osc.connect(g); g.connect(p); p.connect(audio.sfxBus);
+    osc.start(when); osc.stop(when + decay + 0.03);
+  }
+
+  function playMetronome(when, accent=false){
+    makeOsc({when, freq: accent ? 132 : 110, type:'triangle', gain: accent ? 0.11 : 0.08, decay:0.08, sweep: accent ? 70 : 62});
+    makeOsc({when, freq: 1800, type:'square', gain: accent ? 0.022 : 0.016, decay:0.02, sweep:800});
+  }
+
+  function playTapFeedback(kind){
+    const now = audio.ctx.currentTime;
+    if (kind === 'perfect') {
+      makeOsc({when: now, freq: 660, type:'triangle', gain:0.07, decay:0.10, sweep:880});
+      makeOsc({when: now + 0.04, freq: 880, type:'sine', gain:0.045, decay:0.08, sweep:940});
+    } else if (kind === 'good') {
+      makeOsc({when: now, freq: 540, type:'triangle', gain:0.055, decay:0.09, sweep:650});
+    } else {
+      makeOsc({when: now, freq: 200, type:'square', gain:0.06, decay:0.09, sweep:110});
+    }
+  }
+
+  function playWin(){
+    const now = audio.ctx.currentTime;
+    [523.25,659.25,783.99].forEach((f,i)=>makeOsc({when:now+i*0.08,freq:f,type:'sine',gain:0.075,decay:0.24,sweep:f*1.03}));
+  }
+
+  function stopTrack(){
+    if (audio.activeTrack) {
+      try { audio.activeTrack.stop(); } catch {}
+      try { audio.activeTrack.disconnect(); } catch {}
+      audio.activeTrack = null;
+    }
+  }
+
+  function getTrackPlaybackTime(){
+    if (!audio.trackBuffer) return 0;
+    const dur = audio.trackBuffer.duration;
+    return ((audio.ctx.currentTime - audio.trackStartContext) % dur + dur) % dur;
+  }
+
+  function startTrack(offset = 0){
+    if (!audio.trackBuffer) return;
+    stopTrack();
+    const source = audio.ctx.createBufferSource();
+    source.buffer = audio.trackBuffer;
+    source.loop = true;
+    source.connect(audio.musicBus);
+    const when = audio.ctx.currentTime + 0.05;
+    source.start(when, offset % audio.trackBuffer.duration);
+    audio.trackStartContext = when - offset;
+    audio.trackOffset = offset;
+    audio.activeTrack = source;
+  }
+
+  function beginLevel(id){
+    ensureAudio();
+    audio.ctx.resume();
+    state.levelId = id;
+    state.level1NodeIndex = 0;
+    state.resultType = null;
+    state.paused = false;
+    state.tapRing = 0;
+    state.tapRingStrong = 0;
+    state.winFlash = 0;
+    state.missFlash = 0;
+    state.beatPulse = 0;
+    state.guidePulse = 0;
+    judgeText.classList.remove('show');
+    const lvl = LEVELS[id];
+    state.playPhase = 'listen';
+    state.runStartBeat = lvl.listenBeats || 0;
+    centerHint.textContent = id === 0 ? `先聽 ${state.runStartBeat} 拍，再開始前進` : `先聽 ${state.runStartBeat} 拍，再追聲音`;
+    player.x = lvl.start.x; player.y = lvl.start.y; player.yaw = lvl.start.yaw; player.speed = 0; player.sync = 100;
+
+    rhythm.interval = 60 / lvl.bpm;
+    rhythm.tappedBeats.clear();
+    rhythm.lastTapBeat = null;
+
+    const baseStart = audio.ctx.currentTime + 0.55;
+    if (lvl.useTrack) {
+      startTrack(0);
+      rhythm.anchor = audio.trackStartContext + lvl.beatOffset;
+    } else {
+      stopTrack();
+      rhythm.anchor = baseStart;
+      audio.musicGain.gain.setValueAtTime(0.0001, audio.ctx.currentTime);
+    }
+    rhythm.lastProcessedBeat = Math.floor((audio.ctx.currentTime - rhythm.anchor) / rhythm.interval) - 1;
+
+    showOnly('play');
+    canvas.focus?.();
+    requestPointer();
+    updateHud();
+  }
+
+  function requestPointer(){
+    state.pointerWanted = true;
+    if (state.screen === 'play' && document.pointerLockElement !== canvas) {
+      canvas.requestPointerLock?.();
+    }
+  }
+
+  function pauseGame(reason='pause'){
+    if (state.screen !== 'play') return;
+    state.paused = true;
+    if (LEVELS[state.levelId].useTrack && audio.activeTrack) {
+      audio.trackOffset = getTrackPlaybackTime();
+      stopTrack();
+    }
+    showOnly('pause');
+  }
+
+  function resumeGame(){
+    if (state.screen !== 'pause') return;
+    state.paused = false;
+    if (LEVELS[state.levelId].useTrack) {
+      startTrack(audio.trackOffset || 0);
+      rhythm.anchor = audio.trackStartContext + LEVELS[state.levelId].beatOffset;
+    }
+    const nowBeat = Math.floor((audio.ctx.currentTime - rhythm.anchor) / rhythm.interval);
+    rhythm.lastProcessedBeat = nowBeat - 1;
+    showOnly('play');
+    requestPointer();
+  }
+
+  function endLevel(win, subtitle){
+    state.resultType = win ? 'win' : 'fail';
+    if (LEVELS[state.levelId].useTrack) {
+      audio.trackOffset = getTrackPlaybackTime();
+      stopTrack();
+    }
+    releasePointer();
+    resultTitle.textContent = win ? '完成' : '失敗';
+    resultSubtitle.textContent = subtitle;
+    nextActionBtn.textContent = '回選關';
+    showOnly('result');
+  }
+
+  function beatJudge(){
+    if (state.screen !== 'play') return;
+    const lvl = LEVELS[state.levelId];
+    const t = audio.ctx.currentTime;
+    const n = Math.round((t - rhythm.anchor) / rhythm.interval);
+    const nearest = rhythm.anchor + n * rhythm.interval;
+    const err = Math.abs(t - nearest);
+
+    let result = 'miss';
+    if (err <= 0.055) result = 'perfect';
+    else if (err <= 0.11) result = 'good';
+
+    if (rhythm.lastTapBeat === n && err <= 0.11) return; // prevent spam on same beat
+    rhythm.lastTapBeat = n;
+
+    const trainingOnly = state.playPhase !== 'run';
+
+    if (result === 'perfect') {
+      if (!trainingOnly) {
+        player.sync = clamp(player.sync + lvl.perfectGain, 0, 100);
+        rhythm.tappedBeats.add(n);
+      }
+      showJudge(trainingOnly ? 'READY' : 'PERFECT', '#74f1ff');
+      state.tapRing = 1; state.tapRingStrong = 1; state.guidePulse = 1;
+    } else if (result === 'good') {
+      if (!trainingOnly) {
+        player.sync = clamp(player.sync + lvl.goodGain, 0, 100);
+        rhythm.tappedBeats.add(n);
+      }
+      showJudge(trainingOnly ? 'OK' : 'GOOD', '#ffd76b');
+      state.tapRing = 0.82; state.tapRingStrong = 0;
+    } else {
+      if (!trainingOnly) {
+        player.sync = clamp(player.sync - lvl.missPenaltyTap, 0, 100);
+      }
+      showJudge(trainingOnly ? 'EARLY/LATE' : 'MISS', '#ff6f7e');
+      state.tapRing = 0.45; state.tapRingStrong = 0; state.missFlash = trainingOnly ? 0.25 : 0.65;
+    }
+    playTapFeedback(result);
+  }
+
+  function showJudge(label, color){
+    state.judgeLabel = label;
+    state.judgeColor = color;
+    state.judgeShow = 0.34;
+    judgeText.textContent = label;
+    judgeText.style.color = color;
+    judgeText.classList.add('show');
+  }
+
+  function currentTarget(){
+    if (state.levelId === 0) return LEVELS[0].goal;
+    return LEVELS[1].goalNodes[Math.min(state.level1NodeIndex, LEVELS[1].goalNodes.length - 1)];
+  }
+
+  function updateBeatProgress(){
+    const lvl = LEVELS[state.levelId];
+    const now = audio.ctx.currentTime;
+    const beatNow = Math.floor((now - rhythm.anchor) / rhythm.interval);
+    while (rhythm.lastProcessedBeat < beatNow) {
+      rhythm.lastProcessedBeat++;
+      const beatId = rhythm.lastProcessedBeat;
+      if (beatId < 0) continue;
+      if (state.levelId === 0) {
+        playMetronome(rhythm.anchor + beatId * rhythm.interval, beatId % 4 === 0);
+      }
+      if (beatId < state.runStartBeat) {
+        if (beatId === state.runStartBeat - 1) {
+          state.playPhase = 'run';
+          rhythm.tappedBeats.clear();
+          centerHint.textContent = state.levelId === 0 ? '開始：踩拍前進' : '開始：用節奏維持狀態';
+          showJudge('START', '#74f1ff');
+          state.guidePulse = 1;
         }
-        if (abs < 0.7) return '左前';
-        if (abs < 1.6) return '左側';
-        return '左後';
+      } else if (!rhythm.tappedBeats.has(beatId)) {
+        player.sync = clamp(player.sync - lvl.beatMissPenalty, 0, 100);
+        state.missFlash = Math.max(state.missFlash, 0.28);
+      }
+      if (rhythm.tappedBeats.size > 20) {
+        // keep set small
+        const threshold = beatId - 8;
+        for (const v of rhythm.tappedBeats) if (v < threshold) rhythm.tappedBeats.delete(v);
+      }
+      if (state.levelId === 0) state.beatPulse = 1;
+    }
+  }
+
+  function updateSpatialMusic(){
+    if (state.levelId !== 1 || !audio.activeTrack) return;
+    const target = currentTarget();
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    const d = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+    const rel = normAngle(angle - player.yaw);
+    const pan = clamp(Math.sin(rel), -1, 1);
+    const near = 100, far = 1700;
+    let t = 1 - clamp((d - near) / (far - near), 0, 1);
+    const clarity = Math.pow(t, 1.2);
+    const floor = 0.11; // far ambience remains
+    const facing = lerp(0.82, 1.0, 1 - Math.abs(rel) / Math.PI);
+    const syncFactor = lerp(0.82, 1.0, player.sync / 100);
+    audio.musicPan.pan.setTargetAtTime(pan, audio.ctx.currentTime, 0.03);
+    audio.musicGain.gain.setTargetAtTime((lerp(floor, 1.0, clarity) * facing * syncFactor), audio.ctx.currentTime, 0.05);
+    audio.musicLP.frequency.setTargetAtTime(lerp(1400, 18000, clarity) * syncFactor, audio.ctx.currentTime, 0.08);
+  }
+
+  function update(dt){
+    if (state.screen !== 'play' || state.paused) return;
+    const lvl = LEVELS[state.levelId];
+    updateBeatProgress();
+    updateSpatialMusic();
+
+    state.tapRing = Math.max(0, state.tapRing - dt * 2.1);
+    state.tapRingStrong = Math.max(0, state.tapRingStrong - dt * 2.6);
+    state.winFlash = Math.max(0, state.winFlash - dt * 1.6);
+    state.missFlash = Math.max(0, state.missFlash - dt * 2.0);
+    state.beatPulse = Math.max(0, state.beatPulse - dt * 2.8);
+    state.guidePulse = Math.max(0, state.guidePulse - dt * 2.0);
+    state.judgeShow = Math.max(0, state.judgeShow - dt);
+    if (state.judgeShow <= 0) judgeText.classList.remove('show');
+
+    let mx = 0, my = 0;
+    if (input.keys.has('KeyW')) my += 1;
+    if (input.keys.has('KeyS')) my -= 1;
+    if (input.keys.has('KeyA')) mx -= 1;
+    if (input.keys.has('KeyD')) mx += 1;
+    const len = Math.hypot(mx, my);
+    if (len > 0) { mx /= len; my /= len; }
+    const moving = len > 0;
+
+    const inRun = state.playPhase === 'run';
+    const syncNorm = clamp(player.sync / 100, 0, 1);
+    const moveFactor = lerp(0.18, 1.0, syncNorm);
+    const speed = inRun ? lvl.baseSpeed * moveFactor : 0;
+    player.speed = moving ? speed : 0;
+
+    const cos = Math.cos(player.yaw), sin = Math.sin(player.yaw);
+    const forwardX = cos, forwardY = sin;
+    const rightX = -sin, rightY = cos;
+
+    player.x += (forwardX * my + rightX * mx) * speed * dt;
+    player.y += (forwardY * my + rightY * mx) * speed * dt;
+
+    const r = Math.hypot(player.x, player.y);
+    if (r > lvl.worldRadius) {
+      const a = Math.atan2(player.y, player.x);
+      player.x = Math.cos(a) * lvl.worldRadius;
+      player.y = Math.sin(a) * lvl.worldRadius;
     }
 
-    const input = {
-        keys: new Set(),
-        locked: false,
-    };
-
-    const state = {
-        scene: 'boot', // boot, menu, playing, paused, finished
-        resourcesReady: false,
-        levelId: null,
-        pausedByBlur: false,
-        showDebug: false,
-        finishText: '',
-        currentNodeIndex: 0,
-        activeHint: '',
-        activeHintTimer: 0,
-        centerMessageTimer: 0,
-        beatPulse: 0,
-        stepRing: 0,
-        stepStrong: 0,
-        winPulse: 0,
-        time: 0,
-        lastFrame: 0,
-        worldRadius: 1200,
-        player: { x: 0, y: 0, yaw: 0, speed: 0 },
-        menuText: '',
-        tutorialBeatVisible: false,
-        tutorialBeatQuality: '',
-    };
-
-    const levels = {
-        0: {
-            id: 0,
-            name: 'LEVEL 0',
-            subtitle: '教學關 / HARD INFO',
-            worldRadius: 1150,
-            hardInfo: true,
-            metronome: true,
-            guidePulse: true,
-            ghostEnabled: false,
-            nodes: [
-                { x: 260, y: 0, r: 80, label: 'Checkpoint A' },
-                { x: 620, y: -180, r: 85, label: 'Checkpoint B' },
-                { x: 920, y: 140, r: 105, label: 'Source' }
-            ],
-            introText: 'LEVEL 0',
-            hintText: '有完整提示。',
-        },
-        1: {
-            id: 1,
-            name: 'LEVEL 1',
-            subtitle: '正式關 / SOFT INFO',
-            worldRadius: 1280,
-            hardInfo: false,
-            metronome: false,
-            guidePulse: false,
-            ghostEnabled: true,
-            nodes: [
-                { x: -420, y: -160, r: 95, label: 'Stability', ghost: { amount: 0.10, angle: 0.15, delay: 0.11, cutoff: 3200 } },
-                { x: 180, y: -520, r: 90, label: 'False Echo', ghost: { amount: 0.45, angle: 0.95, delay: 0.21, cutoff: 2300 } },
-                { x: 640, y: -40, r: 100, label: 'Clarity', ghost: { amount: 0.18, angle: -0.22, delay: 0.13, cutoff: 5000 } },
-                { x: 850, y: 560, r: 120, label: 'Source', ghost: { amount: 0.08, angle: 0.08, delay: 0.08, cutoff: 6500 } }
-            ],
-            introText: 'LEVEL 1',
-            hintText: '拔掉硬提示。',
-        }
-    };
-
-    const audio = {
-        ctx: null,
-        ready: false,
-        buffer: null,
-        sourceDirect: null,
-        sourceGhost: null,
-        directFilter: null,
-        directGain: null,
-        directPan: null,
-        ghostDelay: null,
-        ghostFilter: null,
-        ghostGain: null,
-        ghostPan: null,
-        master: null,
-        sfxBus: null,
-        ambientBus: null,
-        hum: null,
-        humGain: null,
-        startTimeCtx: 0,
-        startOffsetSec: 0,
-        pausedOffsetSec: 0,
-        isPlaying: false,
-        preloadArrayBuffer: null,
-    };
-
-    function setScene(name) {
-        state.scene = name;
-        bootOverlay.classList.toggle('hidden', name !== 'boot');
-        menuOverlay.classList.toggle('hidden', name !== 'menu');
-        pauseOverlay.classList.toggle('hidden', name !== 'paused');
-        finishOverlay.classList.toggle('hidden', name !== 'finished');
-        hud.classList.toggle('hidden', name !== 'playing');
+    if (inRun) {
+      player.sync = clamp(player.sync - dt * (moving ? lvl.syncDrainMove : lvl.syncDrainIdle), 0, 100);
     }
 
-    function releasePointer() {
-        if (document.pointerLockElement === canvas) {
-            document.exitPointerLock?.();
-        }
-        input.locked = false;
-        input.keys.clear();
+    if (inRun && player.sync <= 0) {
+      endLevel(false, '節奏掉了。重新抓拍。');
+      return;
     }
 
-    function updateLoadProgress(value, text) {
-        loadFill.style.width = `${Math.round(value * 100)}%`;
-        if (text) bootStatus.textContent = text;
-    }
-
-    async function ensureAudioContext() {
-        if (audio.ctx) {
-            if (audio.ctx.state === 'suspended') await audio.ctx.resume();
-            return;
-        }
-        const AC = window.AudioContext || window.webkitAudioContext;
-        audio.ctx = new AC();
-        const ac = audio.ctx;
-
-        audio.master = ac.createGain();
-        audio.master.gain.value = 0.95;
-        audio.master.connect(ac.destination);
-
-        audio.sfxBus = ac.createGain();
-        audio.sfxBus.gain.value = 0.95;
-        audio.sfxBus.connect(audio.master);
-
-        audio.ambientBus = ac.createGain();
-        audio.ambientBus.gain.value = 0.05;
-        audio.ambientBus.connect(audio.master);
-
-        audio.hum = ac.createOscillator();
-        audio.hum.type = 'sine';
-        audio.hum.frequency.value = 40;
-        audio.humGain = ac.createGain();
-        audio.humGain.gain.value = 0.02;
-        audio.hum.connect(audio.humGain);
-        audio.humGain.connect(audio.ambientBus);
-        audio.hum.start();
-    }
-
-    async function loadResources() {
-        loadError.textContent = '';
-        retryBtn.classList.add('hidden');
-        bootBtn.disabled = true;
-        updateLoadProgress(0.08, '啟動音訊...');
-
-        try {
-            await ensureAudioContext();
-            updateLoadProgress(0.18, '讀取 1.mp3 ...');
-            const res = await fetch(TRACK_URL, { cache: 'no-store' });
-            if (!res.ok) throw new Error(`找不到 1.mp3（HTTP ${res.status}）`);
-            const arr = await res.arrayBuffer();
-            audio.preloadArrayBuffer = arr.slice(0);
-            updateLoadProgress(0.56, '處理音檔...');
-            audio.buffer = await audio.ctx.decodeAudioData(arr.slice(0));
-            updateLoadProgress(0.9, `音軌已解碼 / ${audio.buffer.duration.toFixed(1)} 秒`);
-            audio.ready = true;
-            state.resourcesReady = true;
-            menuMeta.textContent = `音檔已載入。\n長度：${audio.buffer.duration.toFixed(1)} 秒`;
-            updateLoadProgress(1, '載入完成');
-            setTimeout(() => setScene('menu'), 220);
-        } catch (err) {
-            console.error(err);
-            loadError.textContent = `載入失敗：${err.message}`;
-            bootStatus.textContent = '載入失敗，請確認 1.mp3 是否存在。';
-            retryBtn.classList.remove('hidden');
-        } finally {
-            bootBtn.disabled = false;
-        }
-    }
-
-    function stopTrack() {
-        [audio.sourceDirect, audio.sourceGhost].forEach(src => {
-            if (!src) return;
-            try { src.stop(); } catch (e) {}
-            try { src.disconnect(); } catch (e) {}
-        });
-        audio.sourceDirect = null;
-        audio.sourceGhost = null;
-        audio.isPlaying = false;
-    }
-
-    function createTrackNodes(level) {
-        const ac = audio.ctx;
-
-        audio.directFilter = ac.createBiquadFilter();
-        audio.directFilter.type = 'lowpass';
-        audio.directFilter.frequency.value = 18000;
-
-        audio.directGain = ac.createGain();
-        audio.directGain.gain.value = 0.0001;
-
-        audio.directPan = ac.createStereoPanner();
-        audio.directPan.pan.value = 0;
-
-        audio.sourceDirect = ac.createBufferSource();
-        audio.sourceDirect.buffer = audio.buffer;
-        audio.sourceDirect.loop = true;
-        audio.sourceDirect.connect(audio.directFilter);
-        audio.directFilter.connect(audio.directGain);
-        audio.directGain.connect(audio.directPan);
-        audio.directPan.connect(audio.master);
-
-        audio.ghostDelay = ac.createDelay(1.0);
-        audio.ghostDelay.delayTime.value = 0.12;
-        audio.ghostFilter = ac.createBiquadFilter();
-        audio.ghostFilter.type = 'lowpass';
-        audio.ghostFilter.frequency.value = 3000;
-        audio.ghostGain = ac.createGain();
-        audio.ghostGain.gain.value = level.ghostEnabled ? 0.06 : 0.0001;
-        audio.ghostPan = ac.createStereoPanner();
-        audio.ghostPan.pan.value = 0;
-
-        audio.sourceGhost = ac.createBufferSource();
-        audio.sourceGhost.buffer = audio.buffer;
-        audio.sourceGhost.loop = true;
-        audio.sourceGhost.connect(audio.ghostDelay);
-        audio.ghostDelay.connect(audio.ghostFilter);
-        audio.ghostFilter.connect(audio.ghostGain);
-        audio.ghostGain.connect(audio.ghostPan);
-        audio.ghostPan.connect(audio.master);
-    }
-
-    function startTrack(offset = 0) {
-        if (!audio.ready || !audio.ctx) return;
-        stopTrack();
-        createTrackNodes(getCurrentLevel());
-        const when = audio.ctx.currentTime + 0.06;
-        const startAt = ((offset % audio.buffer.duration) + audio.buffer.duration) % audio.buffer.duration;
-        audio.startOffsetSec = startAt;
-        audio.startTimeCtx = when;
-        audio.pausedOffsetSec = startAt;
-        audio.sourceDirect.start(when, startAt);
-        audio.sourceGhost.start(when, startAt);
-        audio.isPlaying = true;
-    }
-
-    function getTrackPosition() {
-        if (!audio.ctx) return 0;
-        if (audio.isPlaying) {
-            const elapsed = Math.max(0, audio.ctx.currentTime - audio.startTimeCtx);
-            return (audio.startOffsetSec + elapsed) % audio.buffer.duration;
-        }
-        return audio.pausedOffsetSec % audio.buffer.duration;
-    }
-
-    function pauseTrack() {
-        if (!audio.isPlaying || !audio.ctx) return;
-        audio.pausedOffsetSec = getTrackPosition();
-        stopTrack();
-    }
-
-    function resumeTrack() {
-        if (!audio.ready || audio.isPlaying) return;
-        startTrack(audio.pausedOffsetSec || 0);
-    }
-
-    function getCurrentLevel() {
-        return levels[state.levelId] || null;
-    }
-
-    function resetPlayer(level) {
-        state.player.x = 0;
-        state.player.y = 0;
-        state.player.yaw = 0;
-        state.player.speed = 0;
-        state.currentNodeIndex = 0;
-        state.activeHint = '';
-        state.activeHintTimer = 0;
-        state.centerMessageTimer = 0;
-        state.beatPulse = 0;
-        state.stepRing = 0;
-        state.stepStrong = 0;
-        state.winPulse = 0;
-        state.time = 0;
-        state.worldRadius = level.worldRadius;
-        state.tutorialBeatVisible = false;
-        state.tutorialBeatQuality = '';
-    }
-
-    async function startLevel(levelId) {
-        if (!audio.ready) return;
-        await ensureAudioContext();
-        const level = levels[levelId];
-        state.levelId = levelId;
-        resetPlayer(level);
-        startTrack(0);
-        state.lastFrame = performance.now() / 1000;
-        centerText.textContent = level.id === 0 ? 'TRAINING' : 'LISTEN';
-        state.centerMessageTimer = 1.1;
-        setScene('playing');
-        lockPointerSoon();
-    }
-
-    function lockPointerSoon() {
-        setTimeout(() => {
-            if (state.scene === 'playing' && document.pointerLockElement !== canvas) {
-                canvas.requestPointerLock?.();
-            }
-        }, 120);
-    }
-
-    function finishLevel(text) {
-        state.finishText = text;
-        pauseTrack();
-        setScene('finished');
-        releasePointer();
-        finishTitle.textContent = text;
-        finishMeta.textContent = state.levelId === 0 ? '教學完成，現在可以進正式關。' : '關卡完成。';
-        centerText.textContent = '';
-    }
-
-    function activeNode() {
-        const level = getCurrentLevel();
-        if (!level) return null;
-        return level.nodes[Math.min(state.currentNodeIndex, level.nodes.length - 1)];
-    }
-
-    function advanceNodeIfNeeded() {
-        const level = getCurrentLevel();
-        const node = activeNode();
-        if (!level || !node) return;
-        const d = dist(state.player.x, state.player.y, node.x, node.y);
-        if (d <= node.r) {
-            if (state.currentNodeIndex < level.nodes.length - 1) {
-                state.currentNodeIndex += 1;
-                state.activeHint = level.hardInfo ? `Checkpoint ${state.currentNodeIndex} 達成` : '';
-                state.activeHintTimer = level.hardInfo ? 1.1 : 0;
-                state.centerMessageTimer = 0.8;
-                centerText.textContent = level.hardInfo ? 'CHECKPOINT' : '';
-            } else {
-                finishLevel(level.id === 0 ? 'LEVEL 0 CLEAR' : 'LEVEL 1 CLEAR');
-            }
-        }
-    }
-
-    function makePannerValue(relativeAngle) {
-        return clamp(Math.sin(relativeAngle), -1, 1);
-    }
-
-    function updateSpatialAudio() {
-        if (!audio.ctx || !audio.ready || state.scene !== 'playing') return;
-        const level = getCurrentLevel();
-        const node = activeNode();
-        if (!level || !node) return;
-
-        const dx = node.x - state.player.x;
-        const dy = node.y - state.player.y;
-        const d = Math.hypot(dx, dy);
-        const targetAngle = Math.atan2(dy, dx);
-        const relative = normAngle(targetAngle - state.player.yaw);
-
-        const near = 90;
-        const far = level.id === 0 ? 1250 : 1550;
-        const distT = 1 - clamp((d - near) / (far - near), 0, 1);
-        const clarity = level.id === 0 ? Math.pow(distT, 1.1) : Math.pow(distT, 1.32);
-        const facing = 1 - Math.abs(relative) / Math.PI;
-        const facingBoost = lerp(level.id === 0 ? 0.9 : 0.82, 1.0, facing);
-
-        const floorGain = level.id === 0 ? 0.12 : 0.09;
-        const directGain = lerp(floorGain, 1.0, clarity) * facingBoost;
-        const directCutoff = lerp(level.id === 0 ? 2200 : 1200, 18000, clarity);
-
-        const pan = makePannerValue(relative);
-        audio.directPan.pan.setTargetAtTime(pan, audio.ctx.currentTime, 0.025);
-        audio.directGain.gain.setTargetAtTime(directGain, audio.ctx.currentTime, 0.05);
-        audio.directFilter.frequency.setTargetAtTime(directCutoff, audio.ctx.currentTime, 0.08);
-
-        if (level.ghostEnabled) {
-            const ghost = node.ghost || { amount: 0.12, angle: 0.18, delay: 0.12, cutoff: 3800 };
-            const ghostAngle = relative + ghost.angle;
-            const ghostPan = makePannerValue(ghostAngle);
-            const ghostBase = lerp(ghost.amount * 0.55, ghost.amount, 1 - clarity * 0.4);
-            audio.ghostPan.pan.setTargetAtTime(ghostPan, audio.ctx.currentTime, 0.03);
-            audio.ghostGain.gain.setTargetAtTime(ghostBase, audio.ctx.currentTime, 0.07);
-            audio.ghostDelay.delayTime.setTargetAtTime(ghost.delay, audio.ctx.currentTime, 0.05);
-            audio.ghostFilter.frequency.setTargetAtTime(ghost.cutoff, audio.ctx.currentTime, 0.08);
+    if (state.levelId === 0) {
+      const g = lvl.goal;
+      if (dist(player.x, player.y, g.x, g.y) <= g.r) {
+        state.winFlash = 1; playWin();
+        endLevel(true, '你把節奏帶到了終點。');
+        return;
+      }
+    } else {
+      const node = currentTarget();
+      if (dist(player.x, player.y, node.x, node.y) <= node.r) {
+        if (state.level1NodeIndex < LEVELS[1].goalNodes.length - 1) {
+          state.level1NodeIndex++;
+          state.guidePulse = 1;
         } else {
-            audio.ghostGain.gain.setTargetAtTime(0.0001, audio.ctx.currentTime, 0.04);
-            audio.ghostDelay.delayTime.setTargetAtTime(0.09, audio.ctx.currentTime, 0.04);
-            audio.ghostFilter.frequency.setTargetAtTime(4500, audio.ctx.currentTime, 0.06);
+          state.winFlash = 1; playWin();
+          endLevel(true, '你找到真正的聲源了。');
+          return;
         }
+      }
     }
 
-    function getBeatDistance(trackPos) {
-        const phase = ((trackPos - BEAT_ZERO) % BEAT + BEAT) % BEAT;
-        return Math.min(phase, BEAT - phase);
+    updateHud();
+  }
+
+  function updateHud(){
+    const lvl = LEVELS[state.levelId];
+    if (!lvl) return;
+    hudLevel.textContent = lvl.title;
+    syncFill.style.width = `${player.sync.toFixed(1)}%`;
+
+    if (state.playPhase !== 'run') {
+      hudGuide.textContent = state.levelId === 0 ? '先聽拍子' : '先聽音樂';
+      hudMain.textContent = '現在先不要急，先聽再按 SPACE';
+      return;
     }
 
-    function beatStrength(trackPos) {
-        const d = getBeatDistance(trackPos);
-        const x = clamp(1 - d / 0.11, 0, 1);
-        return x * x * (3 - 2 * x);
+    if (state.levelId === 0) {
+      const g = lvl.goal;
+      const dx = g.x - player.x, dy = g.y - player.y;
+      const d = Math.round(Math.hypot(dx, dy));
+      const rel = normAngle(Math.atan2(dy, dx) - player.yaw);
+      let dir = '前方';
+      if (Math.abs(rel) > 0.35) dir = rel > 0 ? '右前' : '左前';
+      if (Math.abs(rel) > 1.6) dir = rel > 0 ? '右後' : '左後';
+      hudGuide.textContent = `${dir} / ${d} m`;
+      hudMain.textContent = 'SPACE 對拍，W 前進';
+    } else {
+      hudGuide.textContent = ['更穩', '更真', '更清楚', '快到了'][Math.min(state.level1NodeIndex, 3)];
+      hudMain.textContent = 'SPACE 維持節奏';
     }
+  }
 
-    function maybePlayMetronome(trackPos) {
-        const level = getCurrentLevel();
-        if (!level || !level.metronome || !audio.ctx || state.scene !== 'playing') return;
-        const beatIndex = Math.floor((trackPos - BEAT_ZERO + BEAT * 16) / BEAT);
-        if (beatIndex !== maybePlayMetronome.lastBeat) {
-            maybePlayMetronome.lastBeat = beatIndex;
-            playBurst({ freq: 128, type: 'triangle', gain: 0.05, decay: 0.09, sweepTo: 70 });
-        }
-    }
-    maybePlayMetronome.lastBeat = null;
+  function drawBackground(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,W,H);
+    const glow = Math.max(state.tapRing * 0.28, state.tapRingStrong * 0.45, state.guidePulse * 0.16);
+    const g = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.52);
+    g.addColorStop(0, `rgba(255,255,255,${0.01 + glow*0.06})`);
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+  }
 
-    function maybePlayGuidePulse(trackPos) {
-        const level = getCurrentLevel();
-        const node = activeNode();
-        if (!level || !node || !level.guidePulse || !audio.ctx || state.scene !== 'playing') return;
-        const beatIndex = Math.floor((trackPos - BEAT_ZERO + BEAT * 16) / BEAT);
-        if (beatIndex === maybePlayGuidePulse.lastBeat) return;
-        maybePlayGuidePulse.lastBeat = beatIndex;
+  function drawCrosshair(){
+    ctx.save();
+    ctx.translate(W/2,H/2);
+    ctx.strokeStyle = 'rgba(225,235,255,.32)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(8,0); ctx.moveTo(0,-8); ctx.lineTo(0,8); ctx.stroke();
+    ctx.restore();
+  }
 
-        const dx = node.x - state.player.x;
-        const dy = node.y - state.player.y;
-        const rel = normAngle(Math.atan2(dy, dx) - state.player.yaw);
-        const d = Math.hypot(dx, dy);
-        const pan = makePannerValue(rel);
-        const centered = Math.abs(rel) < 0.18;
-        const freq = lerp(320, 920, 1 - clamp(d / 1100, 0, 1));
-        playBurst({ freq, type: centered ? 'triangle' : 'sine', gain: centered ? 0.08 : 0.055, decay: centered ? 0.13 : 0.09, pan, sweepTo: centered ? freq * 1.4 : freq * 1.08 });
-        if (centered) playBurst({ whenOffset: 0.055, freq: freq * 1.85, type: 'sine', gain: 0.03, decay: 0.08, pan: pan * 0.3, sweepTo: freq * 1.92 });
-    }
-    maybePlayGuidePulse.lastBeat = null;
+  function drawTapRing(){
+    const intensity = Math.max(state.tapRing, state.tapRingStrong*1.15);
+    if (intensity <= 0.01 && state.screen === 'play') return;
+    const strong = state.tapRingStrong > 0.01;
+    const r = strong ? 14 + (1 - state.tapRingStrong) * 88 : 12 + (1 - state.tapRing) * 58;
+    ctx.save(); ctx.translate(W/2,H/2);
+    ctx.beginPath(); ctx.arc(0,0,r,0,TAU);
+    ctx.strokeStyle = strong ? `rgba(116,241,255,${0.08 + intensity*0.22})` : `rgba(255,215,107,${0.07 + intensity*0.16})`;
+    ctx.lineWidth = strong ? 1.8 : 1.35; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,strong?2.4:1.9,0,TAU);
+    ctx.fillStyle = strong ? `rgba(220,244,255,${0.18 + intensity*0.20})` : `rgba(255,231,170,${0.11 + intensity*0.12})`;
+    ctx.fill();
+    ctx.restore();
+  }
 
-    function playBurst({ whenOffset = 0, freq = 440, type = 'sine', gain = 0.08, decay = 0.1, attack = 0.004, pan = 0, sweepTo = null }) {
-        if (!audio.ctx) return;
-        const when = audio.ctx.currentTime + whenOffset;
-        const osc = audio.ctx.createOscillator();
-        const g = audio.ctx.createGain();
-        const p = audio.ctx.createStereoPanner();
-        p.pan.value = pan;
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, when);
-        if (sweepTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1, sweepTo), when + decay);
-        g.gain.setValueAtTime(0.0001, when);
-        g.gain.exponentialRampToValueAtTime(gain, when + attack);
-        g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
-        osc.connect(g);
-        g.connect(p);
-        p.connect(audio.sfxBus);
-        osc.start(when);
-        osc.stop(when + decay + 0.03);
-    }
+  function drawTrainingBeat(){
+    if (state.screen !== 'play' || state.levelId !== 0) return;
+    const a = 0.04 + state.beatPulse * 0.12;
+    ctx.save();
+    ctx.fillStyle = `rgba(116,241,255,${a})`;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
 
-    function playFootstep(good) {
-        playBurst({ freq: good ? 94 : 136, type: good ? 'triangle' : 'square', gain: good ? 0.042 : 0.065, decay: 0.09, sweepTo: good ? 52 : 88 });
-    }
+  function drawMissFlash(){
+    if (state.missFlash <= 0.01) return;
+    ctx.fillStyle = `rgba(255,70,90,${state.missFlash * 0.14})`;
+    ctx.fillRect(0,0,W,H);
+  }
 
-    function updatePlayer(dt) {
-        const trackPos = getTrackPosition();
-        const beat = beatStrength(trackPos);
-        const level = getCurrentLevel();
-        if (!level) return;
+  function drawWinFlash(){
+    if (state.winFlash <= 0.01) return;
+    ctx.fillStyle = `rgba(116,241,255,${state.winFlash * 0.18})`;
+    ctx.fillRect(0,0,W,H);
+  }
 
-        let mx = 0, my = 0;
-        if (input.keys.has('KeyW')) my += 1;
-        if (input.keys.has('KeyS')) my -= 1;
-        if (input.keys.has('KeyA')) mx -= 1;
-        if (input.keys.has('KeyD')) mx += 1;
-        const len = Math.hypot(mx, my);
-        if (len > 0) { mx /= len; my /= len; }
-        const moving = len > 0;
-        const sprint = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
+  function drawDebugMap(){
+    // dev hidden on Shift+F2 could be added later; omitted for player build
+  }
 
-        let baseSpeed = level.id === 0 ? 65 : 61;
-        const beatBoost = level.id === 0 ? lerp(0.55, 2.0, beat) : lerp(0.72, 1.78, beat);
-        let speed = baseSpeed * beatBoost;
-        if (sprint) speed *= 1.38;
+  function render(){
+    drawBackground();
+    drawTrainingBeat();
+    drawCrosshair();
+    drawTapRing();
+    drawMissFlash();
+    drawWinFlash();
+    drawDebugMap();
+  }
 
-        const cos = Math.cos(state.player.yaw);
-        const sin = Math.sin(state.player.yaw);
-        const forwardX = cos, forwardY = sin;
-        const rightX = -sin, rightY = cos;
-        const worldX = forwardX * my + rightX * mx;
-        const worldY = forwardY * my + rightY * mx;
-
-        state.player.x += worldX * speed * dt;
-        state.player.y += worldY * speed * dt;
-        state.player.speed = moving ? speed : 0;
-
-        const r = Math.hypot(state.player.x, state.player.y);
-        if (r > state.worldRadius) {
-            const ang = Math.atan2(state.player.y, state.player.x);
-            state.player.x = Math.cos(ang) * state.worldRadius;
-            state.player.y = Math.sin(ang) * state.worldRadius;
-        }
-
-        state.stepRing = Math.max(0, state.stepRing - dt * 2.0);
-        state.stepStrong = Math.max(0, state.stepStrong - dt * 2.4);
-        state.winPulse = Math.max(0, state.winPulse - dt * 1.5);
-        state.activeHintTimer = Math.max(0, state.activeHintTimer - dt);
-        state.centerMessageTimer = Math.max(0, state.centerMessageTimer - dt);
-        if (state.centerMessageTimer <= 0 && state.scene === 'playing') centerText.textContent = '';
-        state.beatPulse = level.id === 0 ? Math.max(state.beatPulse - dt * 2.2, 0) : 0;
-
-        if (moving) {
-            const stepCycle = good => (good ? level.id === 0 ? BEAT * 0.8 : BEAT * 0.82 : 0.22);
-            if (beat > 0.72) {
-                if ((state.time % stepCycle(true)) < dt) {
-                    playFootstep(true);
-                    state.stepRing = 1;
-                    state.stepStrong = 1;
-                    if (level.id === 0) {
-                        state.tutorialBeatVisible = true;
-                        state.tutorialBeatQuality = 'ON BEAT';
-                        state.beatPulse = 1;
-                    }
-                }
-            } else if (beat < 0.22) {
-                if ((state.time % stepCycle(false)) < dt) {
-                    playFootstep(false);
-                    state.stepRing = 0.42;
-                    if (level.id === 0) {
-                        state.tutorialBeatVisible = true;
-                        state.tutorialBeatQuality = 'OFF BEAT';
-                    }
-                }
-            } else if (level.id === 0) {
-                state.tutorialBeatVisible = false;
-            }
-        } else if (level.id === 0) {
-            state.tutorialBeatVisible = false;
-        }
-
-        maybePlayMetronome(trackPos);
-        maybePlayGuidePulse(trackPos);
-        updateSpatialAudio();
-        advanceNodeIfNeeded();
-    }
-
-    function updateHUD() {
-        const level = getCurrentLevel();
-        const node = activeNode();
-        if (!level || !node) return;
-        const dx = node.x - state.player.x;
-        const dy = node.y - state.player.y;
-        const d = Math.hypot(dx, dy);
-        const rel = normAngle(Math.atan2(dy, dx) - state.player.yaw);
-
-        if (level.hardInfo) {
-            const beat = beatStrength(getTrackPosition());
-            const quality = beat > 0.72 ? '準' : beat < 0.22 ? '早 / 晚' : '調整中';
-            hudLeft.innerHTML =
-                `<span class="label">Level 0</span><br>` +
-                `<span class="good">${describeDirection(rel)}</span> / ${Math.round(d)}m<br>` +
-                `<span class="label">下一點</span> ${state.currentNodeIndex + 1} / ${level.nodes.length}`;
-            hudRight.innerHTML =
-                `<span class="label">拍點</span>：<span class="${quality === '準' ? 'good' : quality === '早 / 晚' ? 'warn' : 'gold'}">${quality}</span><br>` +
-                `<span class="label">Esc</span>：暫停`;
-        } else {
-            hudLeft.innerHTML =
-                `<span class="label">Level 1</span><br>` +
-                `跟著更穩、更清楚的聲音`;
-            hudRight.innerHTML =
-                `<span class="label">Esc</span>：暫停`;
-        }
-    }
-
-    function drawBackground() {
-        ctx2d.clearRect(0, 0, W, H);
-        ctx2d.fillStyle = '#000';
-        ctx2d.fillRect(0, 0, W, H);
-    }
-
-    function drawAmbientGlow() {
-        const glow = Math.max(state.stepRing * 0.45, state.stepStrong * 0.72);
-        const g = ctx2d.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.48);
-        g.addColorStop(0, `rgba(255,255,255,${0.012 + glow * 0.035})`);
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx2d.fillStyle = g;
-        ctx2d.fillRect(0, 0, W, H);
-    }
-
-    function drawStepRing() {
-        const intensity = Math.max(state.stepRing, state.stepStrong * 1.15, state.beatPulse * 0.35);
-        if (intensity <= 0.01 && state.scene === 'playing') return;
-        const strong = state.stepStrong > 0.01;
-        const r = strong ? 14 + (1 - state.stepStrong) * 86 : 12 + (1 - Math.max(state.stepRing, state.beatPulse * 0.3)) * 58;
-        ctx2d.save();
-        ctx2d.translate(W / 2, H / 2);
-        ctx2d.beginPath();
-        ctx2d.arc(0, 0, r, 0, TAU);
-        ctx2d.strokeStyle = strong
-            ? `rgba(123,244,255,${0.08 + intensity * 0.22})`
-            : `rgba(190,210,255,${0.05 + intensity * 0.12})`;
-        ctx2d.lineWidth = strong ? 1.8 : 1.2;
-        ctx2d.stroke();
-        ctx2d.beginPath();
-        ctx2d.arc(0, 0, strong ? 2.3 : 1.8, 0, TAU);
-        ctx2d.fillStyle = strong
-            ? `rgba(220,240,255,${0.18 + intensity * 0.22})`
-            : `rgba(220,230,255,${0.10 + intensity * 0.10})`;
-        ctx2d.fill();
-        ctx2d.restore();
-    }
-
-    function drawTutorialBeatLine() {
-        const level = getCurrentLevel();
-        if (!level || !level.hardInfo) return;
-        const beat = beatStrength(getTrackPosition());
-        const width = 180;
-        const x = W / 2 - width / 2;
-        const y = 22;
-        ctx2d.save();
-        ctx2d.fillStyle = 'rgba(255,255,255,.04)';
-        ctx2d.fillRect(x, y, width, 5);
-        ctx2d.fillStyle = `rgba(123,244,255,${0.18 + beat * 0.45})`;
-        ctx2d.fillRect(x, y, width * beat, 5);
-        ctx2d.strokeStyle = 'rgba(255,255,255,.08)';
-        ctx2d.strokeRect(x, y, width, 5);
-        ctx2d.restore();
-    }
-
-    function drawNoise() {
-        const amount = 70;
-        for (let i = 0; i < amount; i++) {
-            const x = Math.random() * W;
-            const y = Math.random() * H;
-            const alpha = Math.random() * 0.02;
-            ctx2d.fillStyle = `rgba(255,255,255,${alpha})`;
-            ctx2d.fillRect(x, y, 1.2, 1.2);
-        }
-    }
-
-    function drawWinFlash() {
-        if (state.winPulse <= 0.01) return;
-        ctx2d.fillStyle = `rgba(123,244,255,${state.winPulse * 0.22})`;
-        ctx2d.fillRect(0, 0, W, H);
-    }
-
-    function drawDebugMap() {
-        if (!state.showDebug || state.scene === 'boot' || state.scene === 'menu') return;
-        const level = getCurrentLevel();
-        if (!level) return;
-        const size = 220;
-        const pad = 18;
-        const x = W - size - pad;
-        const y = H - size - pad;
-        const s = size / (state.worldRadius * 2);
-        ctx2d.save();
-        ctx2d.fillStyle = 'rgba(6,10,18,0.76)';
-        ctx2d.fillRect(x, y, size, size);
-        ctx2d.strokeStyle = 'rgba(130,160,255,0.35)';
-        ctx2d.lineWidth = 1;
-        ctx2d.strokeRect(x, y, size, size);
-
-        ctx2d.beginPath();
-        ctx2d.arc(x + size / 2, y + size / 2, state.worldRadius * s, 0, TAU);
-        ctx2d.strokeStyle = 'rgba(100,140,255,0.24)';
-        ctx2d.stroke();
-
-        level.nodes.forEach((node, idx) => {
-            ctx2d.beginPath();
-            ctx2d.arc(x + size / 2 + node.x * s, y + size / 2 + node.y * s, idx === state.currentNodeIndex ? 6 : 4, 0, TAU);
-            ctx2d.fillStyle = idx === state.currentNodeIndex ? '#7bf4ff' : 'rgba(255,255,255,.35)';
-            ctx2d.fill();
-        });
-
-        const px = x + size / 2 + state.player.x * s;
-        const py = y + size / 2 + state.player.y * s;
-        ctx2d.beginPath();
-        ctx2d.arc(px, py, 4, 0, TAU);
-        ctx2d.fillStyle = '#fff';
-        ctx2d.fill();
-
-        ctx2d.beginPath();
-        ctx2d.moveTo(px, py);
-        ctx2d.lineTo(px + Math.cos(state.player.yaw) * 18, py + Math.sin(state.player.yaw) * 18);
-        ctx2d.strokeStyle = '#ffcc66';
-        ctx2d.lineWidth = 2;
-        ctx2d.stroke();
-
-        ctx2d.font = '12px Segoe UI';
-        ctx2d.fillStyle = '#9ab2ff';
-        ctx2d.fillText(`DEBUG / ${level.name}`, x + 10, y + 16);
-        ctx2d.restore();
-    }
-
-    function render() {
-        drawBackground();
-        drawAmbientGlow();
-        drawStepRing();
-        drawTutorialBeatLine();
-        drawNoise();
-        drawWinFlash();
-        drawDebugMap();
-    }
-
-    function gameLoop(tMs) {
-        const now = tMs / 1000;
-        const dt = Math.min(0.033, now - (state.lastFrame || now));
-        state.lastFrame = now;
-
-        if (state.scene === 'playing') {
-            state.time += dt;
-            updatePlayer(dt);
-            updateHUD();
-        }
-
-        render();
-        requestAnimationFrame(gameLoop);
-    }
-    requestAnimationFrame(gameLoop);
-
-    function pauseGame(reason = '暫停') {
-        if (state.scene !== 'playing') return;
-        pauseTrack();
-        setScene('paused');
-        releasePointer();
-        pauseMeta.textContent = `${reason}`;
-        centerText.textContent = '';
-    }
-
-    async function resumeGame() {
-        if (state.scene !== 'paused') return;
-        await ensureAudioContext();
-        resumeTrack();
-        setScene('playing');
-        lockPointerSoon();
-    }
-
-    function backToMenu() {
-        pauseTrack();
-        state.levelId = null;
-        centerText.textContent = '';
-        setScene('menu');
-        releasePointer();
-    }
-
-    document.addEventListener('keydown', async (e) => {
-        input.keys.add(e.code);
-
-        if (e.code === 'F2') {
-            state.showDebug = !state.showDebug;
-            debugBadge.classList.toggle('show', state.showDebug);
-        }
-
-        if (e.code === 'Escape') {
-            if (state.scene === 'playing') {
-                e.preventDefault();
-                pauseGame('已暫停');
-            } else if (state.scene === 'paused') {
-                e.preventDefault();
-                await resumeGame();
-            }
-        }
-    });
-
-    document.addEventListener('keyup', e => input.keys.delete(e.code));
-
-    document.addEventListener('mousemove', e => {
-        if (!input.locked || state.scene !== 'playing') return;
-        state.player.yaw += e.movementX * 0.0026;
-    });
-
-    canvas.addEventListener('click', async () => {
-        if (state.scene === 'playing' && document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock?.();
-        }
-    });
-
-    document.addEventListener('pointerlockchange', () => {
-        input.locked = document.pointerLockElement === canvas;
-        if (state.scene === 'playing' && !input.locked) {
-            pauseGame('已暫停');
-        }
-    });
-
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden && state.scene === 'playing') {
-            state.pausedByBlur = true;
-            pauseGame('視窗切走，已暫停');
-        }
-    });
-
-    window.addEventListener('blur', () => {
-        if (state.scene === 'playing') {
-            state.pausedByBlur = true;
-            pauseGame('視窗切走，已暫停');
-        }
-    });
-
-    bootBtn.addEventListener('click', loadResources);
-    retryBtn.addEventListener('click', loadResources);
-    startLevel0Btn.addEventListener('click', () => startLevel(0));
-    startLevel1Btn.addEventListener('click', () => startLevel(1));
-    resumeBtn.addEventListener('click', resumeGame);
-    restartBtn.addEventListener('click', () => startLevel(state.levelId));
-    backToMenuBtn.addEventListener('click', backToMenu);
-    finishRestartBtn.addEventListener('click', () => startLevel(state.levelId));
-    finishMenuBtn.addEventListener('click', backToMenu);
-
-    setScene('boot');
+  let last = performance.now() / 1000;
+  function frame(){
+    const now = performance.now() / 1000;
+    const dt = Math.min(0.033, now - last);
+    last = now;
+    update(dt);
     render();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  bootBtn.addEventListener('click', loadAssets);
+  retryBtn.addEventListener('click', loadAssets);
+  startL0.addEventListener('click', ()=>beginLevel(0));
+  startL1.addEventListener('click', ()=>{
+    if (!state.assetsReady) return;
+    beginLevel(1);
+  });
+  resumeBtn.addEventListener('click', resumeGame);
+  restartBtn.addEventListener('click', ()=>beginLevel(state.levelId));
+  retryLevelBtn.addEventListener('click', ()=>beginLevel(state.levelId));
+  toMenuBtn.addEventListener('click', ()=>showOnly('menu'));
+  nextActionBtn.addEventListener('click', ()=>showOnly('menu'));
+
+  document.addEventListener('pointerlockchange', ()=>{
+    input.locked = document.pointerLockElement === canvas;
+    if (state.screen === 'play' && state.pointerWanted && !input.locked) {
+      pauseGame('unlock');
+    }
+    if (input.locked) state.pointerWanted = false;
+  });
+
+  document.addEventListener('mousemove', e=>{
+    if (state.screen !== 'play' || !input.locked) return;
+    player.yaw += e.movementX * 0.0026;
+  });
+
+  document.addEventListener('keydown', e=>{
+    if (e.repeat && e.code === 'Space') return;
+    input.keys.add(e.code);
+
+    if (e.code === 'Escape') {
+      e.preventDefault();
+      if (state.screen === 'play') pauseGame('esc');
+      else if (state.screen === 'pause') resumeGame();
+      return;
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (state.screen === 'play') beatJudge();
+    }
+  });
+
+  document.addEventListener('keyup', e=>input.keys.delete(e.code));
+
+  canvas.addEventListener('click', ()=>{
+    if (state.screen === 'play' && !input.locked) requestPointer();
+  });
+
+  window.addEventListener('blur', ()=>{ if (state.screen === 'play') pauseGame('blur'); });
+  document.addEventListener('visibilitychange', ()=>{ if (document.hidden && state.screen === 'play') pauseGame('hidden'); });
+
+  // initial render
+  render();
 })();
 </script>
 </body>
