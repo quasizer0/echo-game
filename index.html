@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Blind Beat - Tutorial / Stage Prototype</title>
+<title>BLIND BEAT - LEVEL 1</title>
 <style>
     :root{
         --bg:#000;
-        --fg:#e8eeff;
-        --sub:#8d99b8;
+        --fg:#e9efff;
+        --sub:#8e99b7;
         --good:#6df0ff;
-        --warn:#ff6b6b;
         --gold:#ffcf66;
+        --soft:#cfd8ff;
     }
-    *{ box-sizing:border-box; }
+    *{box-sizing:border-box;}
     html,body{
         margin:0;
         width:100%;
@@ -39,16 +39,16 @@
         pointer-events:none;
     }
     #panel{
-        width:min(760px, calc(100vw - 32px));
-        background:rgba(0,0,0,0.58);
-        border:1px solid rgba(255,255,255,0.08);
+        width:min(820px, calc(100vw - 32px));
+        background:rgba(0,0,0,.58);
+        border:1px solid rgba(255,255,255,.08);
         border-radius:18px;
         padding:22px 24px;
         backdrop-filter:blur(8px);
-        box-shadow:0 0 50px rgba(255,255,255,0.04);
+        box-shadow:0 0 50px rgba(255,255,255,.04);
         transition:opacity .25s ease;
     }
-    #panel.hidden{ opacity:0; }
+    #panel.hidden{opacity:0;}
     .title{
         font-size:clamp(24px,4vw,42px);
         font-weight:900;
@@ -61,40 +61,12 @@
         font-size:15px;
         white-space:pre-line;
     }
-    .mode-box{
-        margin-top:16px;
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:12px;
-    }
-    .mode{
-        border:1px solid rgba(255,255,255,0.08);
-        background:rgba(255,255,255,0.03);
-        border-radius:14px;
-        padding:14px;
-    }
-    .mode.active{
-        border-color:rgba(109,240,255,.45);
-        box-shadow:0 0 0 1px rgba(109,240,255,.15) inset;
-    }
-    .mode h3{
-        margin:0 0 8px 0;
-        font-size:16px;
-        color:#fff;
-    }
-    .mode p{
-        margin:0;
-        color:var(--sub);
-        line-height:1.6;
-        font-size:13px;
-    }
     .hint{
         margin-top:14px;
         color:var(--good);
         font-size:14px;
         font-weight:700;
     }
-
     #hud{
         position:fixed;
         inset:0;
@@ -107,34 +79,33 @@
         align-items:flex-start;
         gap:16px;
     }
-    .hud-left, .hud-right{
-        background:rgba(0,0,0,0.28);
-        border:1px solid rgba(255,255,255,0.06);
+    .hud-left,.hud-right{
+        min-width:230px;
+        background:rgba(0,0,0,.28);
+        border:1px solid rgba(255,255,255,.06);
         border-radius:12px;
         padding:10px 12px;
         backdrop-filter:blur(6px);
         line-height:1.5;
         font-size:13px;
         color:#c8d0e5;
-        min-width:220px;
     }
-    .hud-right{ text-align:right; }
-    .label{ color:#8da1d1; }
-    .good{ color:var(--good); }
-    .warn{ color:var(--warn); }
-    .gold{ color:var(--gold); }
+    .hud-right{text-align:right;}
+    .label{color:#8da1d1;}
+    .good{color:var(--good);}
+    .gold{color:var(--gold);}
 
     #centerText{
         position:fixed;
         left:50%;
         top:78%;
-        transform:translate(-50%, -50%);
+        transform:translate(-50%,-50%);
         min-width:280px;
         text-align:center;
         letter-spacing:.14em;
         font-size:14px;
-        color:rgba(235,242,255,0.88);
-        text-shadow:0 0 8px rgba(255,255,255,0.14);
+        color:rgba(235,242,255,.9);
+        text-shadow:0 0 8px rgba(255,255,255,.14);
         pointer-events:none;
     }
     #debugBadge{
@@ -151,44 +122,86 @@
         opacity:0;
         transition:opacity .18s ease;
     }
-    #debugBadge.show{ opacity:1; }
+    #debugBadge.show{opacity:1;}
+
+    #musicPickerWrap{
+        position:fixed;
+        left:16px;
+        bottom:52px;
+        z-index:20;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        background:rgba(0,0,0,.45);
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:12px;
+        padding:10px 12px;
+        backdrop-filter:blur(6px);
+    }
+    #musicPickerWrap label{
+        font-size:13px;
+        color:#c8d0e5;
+    }
+    #musicPicker{
+        color:#dfe7ff;
+        font-size:12px;
+        width:230px;
+    }
+    #trackStatus{
+        position:fixed;
+        right:16px;
+        bottom:16px;
+        z-index:20;
+        background:rgba(0,0,0,.3);
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:10px;
+        padding:8px 10px;
+        font-size:12px;
+        color:#c8d0e5;
+        backdrop-filter:blur(6px);
+        max-width:40vw;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+    }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 
+<div id="musicPickerWrap">
+    <label for="musicPicker">Level 1 音檔：</label>
+    <input id="musicPicker" type="file" accept=".wav,.mp3,.ogg,.m4a,.aac,.flac">
+</div>
+
+<div id="trackStatus">TRACK: TRYING ./1.wav</div>
+
+<audio id="musicSource" preload="auto" playsinline src="./1.wav"></audio>
+
 <div id="overlay">
     <div id="panel">
-        <div class="title">BLIND BEAT</div>
-        <div class="desc">你看不見世界。
-只有節拍、方向、腳步，和越來越靠近的危險。
+        <div class="title">BLIND BEAT / LEVEL 1</div>
+        <div class="desc">第 1 關，同時也是教學關。
+這裡沒有怪物，只有黑暗、節拍，和遠方的歌。
 
-操作：
+玩法：
+• 如果 1.wav 跟 HTML 放同資料夾，會自動嘗試載入
+• 如果沒載到，就在左下角手動選音檔
 • 點擊畫面開始並鎖定滑鼠
 • 滑鼠左右：轉向（只能水平 360°）
 • W A S D：移動
-• Shift：衝刺（更快，但更吵）
-• 1 / 2：切換模式
+• Shift：衝刺
 • R：重開
 • F2：開發測試地圖
 
 規則：
-• 教學關可保留 BPM 輔助
-• 正式關只保留音樂與方向聲，不再顯示顯性 BPM 提示
-• 你必須靠拍子與方向引導找到出口</div>
-
-        <div class="mode-box">
-            <div class="mode active" id="tutorialCard">
-                <h3>1｜Tutorial</h3>
-                <p>保留 BPM 輔助。會給你較明顯的節拍提示與教學回饋，適合練手感。</p>
-            </div>
-            <div class="mode" id="stageCard">
-                <h3>2｜Stage</h3>
-                <p>有音樂，但不再額外顯示 BPM 輔助。你只能靠音樂、方向聲與移動手感活下來。</p>
-            </div>
-        </div>
-
-        <div class="hint">按 1 或 2 選模式，再點擊畫面開始</div>
+• 這首歌就是關卡本體
+• 越接近音源，音樂越清楚、越大聲
+• 越遠也不會完全靜音，會像遠方殘響
+• 視覺圈不會自動跟 BPM 跳；只有你自己踏步時才出現
+• 前段有少量教學輔助，之後會自動退場
+• 沒有怪物，也沒有死亡條，目標只有一個：找到音源</div>
+        <div class="hint">直接點畫面開始；如果沒聲音，再用左下角選 1.wav</div>
     </div>
 </div>
 
@@ -206,11 +219,12 @@
 (() => {
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
+    const musicEl = document.getElementById('musicSource');
+    const musicPicker = document.getElementById('musicPicker');
+    const trackStatus = document.getElementById('trackStatus');
 
     const overlay = document.getElementById('overlay');
     const panel = document.getElementById('panel');
-    const tutorialCard = document.getElementById('tutorialCard');
-    const stageCard = document.getElementById('stageCard');
     const hudLeft = document.getElementById('hudLeft');
     const hudRight = document.getElementById('hudRight');
     const centerText = document.getElementById('centerText');
@@ -219,6 +233,8 @@
     let W = window.innerWidth;
     let H = window.innerHeight;
     let DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let currentTrackUrl = null;
+    let trackLoaded = false;
 
     function resize() {
         W = window.innerWidth;
@@ -232,6 +248,9 @@
     window.addEventListener('resize', resize);
 
     const TAU = Math.PI * 2;
+    const BPM = 103;
+    const BEAT = 60 / BPM;
+
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const lerp = (a, b, t) => a + (b - a) * t;
     const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
@@ -247,33 +266,29 @@
     }
 
     const game = {
-        state: 'idle',         // idle, playing, win, dead
-        mode: 'tutorial',      // tutorial, stage
+        state: 'idle', // idle, playing, win, ended
         started: false,
         showDebug: false,
 
         time: 0,
         lastFrame: 0,
 
-        bpm: 104,
-        beatInterval: 60 / 104,
+        beatInterval: BEAT,
         beatWindow: 0.11,
         audioStartedAt: 0,
         nextBeatTime: 0,
         beatIndex: 0,
 
         worldRadius: 1200,
-        goalRadius: 55,
+        goalRadius: 65,
 
-        beatFlash: 0,
-        successPulse: 0,
+        stepRing: 0,
+        stepRingStrong: 0,
         winPulse: 0,
-        deadPulse: 0,
-        threat: 0,
-
-        message: '點擊開始',
         guideText: '',
-        lastGuideText: 0,
+        guideTextTimer: 0,
+        message: '等待音樂',
+        lastStepAt: -999,
 
         player: {
             x: 0,
@@ -296,68 +311,23 @@
     let audio = null;
     let schedulerTimer = null;
 
-    function updateModeUI() {
-        tutorialCard.classList.toggle('active', game.mode === 'tutorial');
-        stageCard.classList.toggle('active', game.mode === 'stage');
-    }
-
-    function spawnGoal() {
-        const angle = randRange(0, TAU);
-        const radius = randRange(720, 960);
-        game.goal.x = Math.cos(angle) * radius;
-        game.goal.y = Math.sin(angle) * radius;
-    }
-
-    function resetWorld() {
-        game.state = 'playing';
-        game.time = 0;
-        game.lastFrame = performance.now() / 1000;
-        game.beatFlash = 0;
-        game.successPulse = 0;
-        game.winPulse = 0;
-        game.deadPulse = 0;
-        game.threat = 0;
-        game.message = game.mode === 'tutorial' ? '跟著拍子走' : '聽音樂活下來';
-        game.guideText = '';
-        game.lastGuideText = 0;
-
-        game.player.x = 0;
-        game.player.y = 0;
-        game.player.yaw = 0;
-        game.player.speed = 0;
-
-        spawnGoal();
-
-        if (audio) {
-            const now = audio.ctx.currentTime;
-            game.audioStartedAt = now + 0.08;
-            game.nextBeatTime = game.audioStartedAt;
-            game.beatIndex = 0;
-        }
-    }
-
     function createAudio() {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
 
-        const master = ctx.createGain();
-        master.gain.value = 0.8;
-        master.connect(ctx.destination);
+        const master = ac.createGain();
+        master.gain.value = 0.95;
+        master.connect(ac.destination);
 
-        const musicBus = ctx.createGain();
-        musicBus.gain.value = 0.55;
-        musicBus.connect(master);
-
-        const sfxBus = ctx.createGain();
-        sfxBus.gain.value = 0.9;
+        const sfxBus = ac.createGain();
+        sfxBus.gain.value = 0.95;
         sfxBus.connect(master);
 
-        const ambientBus = ctx.createGain();
+        const ambientBus = ac.createGain();
         ambientBus.gain.value = 0.05;
         ambientBus.connect(master);
 
-        // 低頻底噪
-        const hum = ctx.createOscillator();
-        const humGain = ctx.createGain();
+        const hum = ac.createOscillator();
+        const humGain = ac.createGain();
         hum.type = 'sine';
         hum.frequency.value = 41;
         humGain.gain.value = 0.02;
@@ -365,13 +335,71 @@
         humGain.connect(ambientBus);
         hum.start();
 
+        const musicSource = ac.createMediaElementSource(musicEl);
+
+        const musicDryFilter = ac.createBiquadFilter();
+        musicDryFilter.type = 'lowpass';
+        musicDryFilter.frequency.value = 18000;
+
+        const musicDryGain = ac.createGain();
+        musicDryGain.gain.value = 0.0001;
+
+        const musicDryPanner = ac.createStereoPanner();
+        musicDryPanner.pan.value = 0;
+
+        // 遠距離殘響：距離越遠，這條路徑越明顯
+        const musicWetPreFilter = ac.createBiquadFilter();
+        musicWetPreFilter.type = 'lowpass';
+        musicWetPreFilter.frequency.value = 3200;
+
+        const musicWetDelay = ac.createDelay(1.0);
+        musicWetDelay.delayTime.value = 0.19;
+
+        const musicWetFeedbackFilter = ac.createBiquadFilter();
+        musicWetFeedbackFilter.type = 'lowpass';
+        musicWetFeedbackFilter.frequency.value = 2400;
+
+        const musicWetFeedbackGain = ac.createGain();
+        musicWetFeedbackGain.gain.value = 0.24;
+
+        const musicWetGain = ac.createGain();
+        musicWetGain.gain.value = 0.0001;
+
+        const musicWetPanner = ac.createStereoPanner();
+        musicWetPanner.pan.value = 0;
+
+        // dry path
+        musicSource.connect(musicDryFilter);
+        musicDryFilter.connect(musicDryGain);
+        musicDryGain.connect(musicDryPanner);
+        musicDryPanner.connect(master);
+
+        // wet path with light feedback echo
+        musicSource.connect(musicWetPreFilter);
+        musicWetPreFilter.connect(musicWetDelay);
+        musicWetDelay.connect(musicWetFeedbackFilter);
+        musicWetFeedbackFilter.connect(musicWetFeedbackGain);
+        musicWetFeedbackGain.connect(musicWetDelay);
+        musicWetDelay.connect(musicWetGain);
+        musicWetGain.connect(musicWetPanner);
+        musicWetPanner.connect(master);
+
         return {
-            ctx,
+            ctx: ac,
             master,
-            musicBus,
             sfxBus,
             ambientBus,
-            hum
+            hum,
+            musicSource,
+            musicDryFilter,
+            musicDryGain,
+            musicDryPanner,
+            musicWetPreFilter,
+            musicWetDelay,
+            musicWetFeedbackFilter,
+            musicWetFeedbackGain,
+            musicWetGain,
+            musicWetPanner
         };
     }
 
@@ -382,22 +410,24 @@
         if (!schedulerTimer) {
             schedulerTimer = setInterval(audioScheduler, 25);
         }
+
+        hudRight.innerHTML =
+            `<span class="label">音訊</span>：<span class="good">已啟動</span><br>` +
+            `<span class="label">關卡</span>：<span class="gold">LEVEL 1</span><br>` +
+            `<span class="label">模式</span>：追音源`;
     }
 
     function makeStereoNode() {
         if (!audio) return null;
-        if (audio.ctx.createStereoPanner) {
-            return audio.ctx.createStereoPanner();
-        }
+        if (audio.ctx.createStereoPanner) return audio.ctx.createStereoPanner();
         return audio.ctx.createGain();
     }
 
     function connectPan(node, value) {
-        if (!node) return;
-        if ('pan' in node) node.pan.value = clamp(value, -1, 1);
+        if (node && 'pan' in node) node.pan.value = clamp(value, -1, 1);
     }
 
-    function playOscBurst({ when, freq = 440, type = 'sine', attack = 0.005, decay = 0.12, gain = 0.08, pan = 0, bus = null, sweepTo = null }) {
+    function playOscBurst({ when, freq = 440, type = 'sine', attack = 0.005, decay = 0.12, gain = 0.08, pan = 0, sweepTo = null }) {
         if (!audio) return;
         const osc = audio.ctx.createOscillator();
         const g = audio.ctx.createGain();
@@ -413,88 +443,11 @@
 
         osc.connect(g);
         g.connect(p);
-        p.connect(bus || audio.sfxBus);
+        p.connect(audio.sfxBus);
         connectPan(p, pan);
 
         osc.start(when);
         osc.stop(when + decay + 0.03);
-    }
-
-    function scheduleKick(when) {
-        playOscBurst({
-            when,
-            freq: 120,
-            type: 'triangle',
-            gain: 0.11,
-            decay: 0.12,
-            sweepTo: 42,
-            bus: audio.musicBus
-        });
-        // 點擊感
-        playOscBurst({
-            when,
-            freq: 1800,
-            type: 'square',
-            gain: 0.015,
-            decay: 0.022,
-            sweepTo: 500,
-            bus: audio.musicBus
-        });
-    }
-
-    function scheduleHat(when, gain = 0.018) {
-        if (!audio) return;
-        const bufferSize = 2 * audio.ctx.sampleRate * 0.03;
-        const buffer = audio.ctx.createBuffer(1, bufferSize, audio.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
-
-        const src = audio.ctx.createBufferSource();
-        const hp = audio.ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 7000;
-
-        const g = audio.ctx.createGain();
-        g.gain.setValueAtTime(gain, when);
-        g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
-
-        src.buffer = buffer;
-        src.connect(hp);
-        hp.connect(g);
-        g.connect(audio.musicBus);
-        src.start(when);
-        src.stop(when + 0.06);
-    }
-
-    function scheduleBass(when, beatIndex) {
-        const pattern = [55, 55, 73.42, 65.41];
-        const f = pattern[beatIndex % pattern.length];
-        playOscBurst({
-            when,
-            freq: f,
-            type: 'sawtooth',
-            gain: 0.05,
-            decay: 0.22,
-            sweepTo: f * 0.96,
-            bus: audio.musicBus
-        });
-    }
-
-    function schedulePad(when, beatIndex) {
-        if (beatIndex % 4 !== 0) return;
-        const freqs = [220, 277.18, 329.63];
-        freqs.forEach((f, i) => {
-            playOscBurst({
-                when: when + i * 0.005,
-                freq: f,
-                type: 'sine',
-                gain: 0.018,
-                decay: 0.9,
-                sweepTo: f * 1.003,
-                bus: audio.musicBus,
-                pan: i === 0 ? -0.15 : i === 2 ? 0.15 : 0
-            });
-        });
     }
 
     function scheduleMetronome(when) {
@@ -502,21 +455,17 @@
             when,
             freq: 120,
             type: 'triangle',
-            gain: 0.055,
+            gain: 0.045,
             decay: 0.08,
-            sweepTo: 64,
-            bus: audio.sfxBus
+            sweepTo: 64
         });
     }
 
-    function scheduleGuidePulse(when, relativeAngle, distanceToGoal) {
+    function scheduleGuidePulse(when, relativeAngle, distanceToGoal, showText = false) {
         const pan = Math.sin(relativeAngle);
         const centered = Math.abs(relativeAngle) < 0.18;
-
         const freq = lerp(300, 920, 1 - clamp(distanceToGoal / 1200, 0, 1));
-        const gain = game.mode === 'tutorial'
-            ? lerp(0.05, 0.14, 1 - clamp(distanceToGoal / 1200, 0, 1))
-            : lerp(0.035, 0.09, 1 - clamp(distanceToGoal / 1200, 0, 1));
+        const gain = lerp(0.03, 0.095, 1 - clamp(distanceToGoal / 1200, 0, 1));
 
         playOscBurst({
             when,
@@ -525,8 +474,7 @@
             gain,
             decay: centered ? 0.13 : 0.09,
             sweepTo: centered ? freq * 1.45 : freq * 1.08,
-            pan,
-            bus: audio.sfxBus
+            pan
         });
 
         if (centered) {
@@ -534,41 +482,30 @@
                 when: when + 0.055,
                 freq: freq * 1.85,
                 type: 'sine',
-                gain: gain * 0.46,
+                gain: gain * 0.42,
                 decay: 0.08,
                 sweepTo: freq * 1.92,
-                pan: pan * 0.35,
-                bus: audio.sfxBus
+                pan: pan * 0.35
             });
+        }
+
+        if (showText) {
+            if (Math.abs(relativeAngle) < 0.18) game.guideText = '方向正確';
+            else if (relativeAngle > 0) game.guideText = '音源在右邊';
+            else game.guideText = '音源在左邊';
+            game.guideTextTimer = 1.0;
         }
     }
 
     function playFootstep(good = true) {
         if (!audio) return;
-        const now = audio.ctx.currentTime;
         playOscBurst({
-            when: now,
+            when: audio.ctx.currentTime,
             freq: good ? 92 : 138,
             type: good ? 'triangle' : 'square',
-            gain: good ? 0.045 : 0.085,
-            decay: 0.095,
-            sweepTo: good ? 48 : 82,
-            bus: audio.sfxBus
-        });
-    }
-
-    function playThreatBlip(level = 0.5) {
-        if (!audio) return;
-        const now = audio.ctx.currentTime;
-        playOscBurst({
-            when: now,
-            freq: 220 + level * 180,
-            type: 'sawtooth',
-            gain: 0.02 + level * 0.07,
-            decay: 0.16,
-            sweepTo: 80,
-            pan: randRange(-0.9, 0.9),
-            bus: audio.sfxBus
+            gain: good ? 0.04 : 0.065,
+            decay: 0.09,
+            sweepTo: good ? 48 : 82
         });
     }
 
@@ -582,24 +519,28 @@
                 type: 'sine',
                 gain: 0.08,
                 decay: 0.24,
-                sweepTo: f * 1.02,
-                bus: audio.sfxBus
+                sweepTo: f * 1.02
             });
         });
     }
 
-    function playDeadTone() {
-        if (!audio) return;
-        const now = audio.ctx.currentTime;
-        playOscBurst({
-            when: now,
-            freq: 180,
-            type: 'sawtooth',
-            gain: 0.13,
-            decay: 0.62,
-            sweepTo: 36,
-            bus: audio.sfxBus
-        });
+    function spawnGoal() {
+        const angle = randRange(0, TAU);
+        const radius = randRange(760, 940);
+        game.goal.x = Math.cos(angle) * radius;
+        game.goal.y = Math.sin(angle) * radius;
+    }
+
+    function currentTutorialPhase() {
+        if (game.beatIndex < 16) return 0; // 節拍 + 方向
+        if (game.beatIndex < 32) return 1; // 只留方向
+        return 2; // 只剩真音樂
+    }
+
+    function phaseLabel(phase) {
+        if (phase === 0) return '教學 A / 節拍 + 方向';
+        if (phase === 1) return '教學 B / 只留方向';
+        return '正式探索 / 只剩真音樂';
     }
 
     function getBeatPhase(nowAudio) {
@@ -614,6 +555,97 @@
         const { d } = getBeatPhase(nowAudio);
         const x = clamp(1 - d / game.beatWindow, 0, 1);
         return x * x * (3 - 2 * x);
+    }
+
+    function updateSpatialMusic() {
+        if (!audio || game.state !== 'playing' || !trackLoaded) {
+            if (audio) {
+                audio.musicDryGain.gain.setTargetAtTime(0.0001, audio.ctx.currentTime, 0.05);
+                audio.musicWetGain.gain.setTargetAtTime(0.0001, audio.ctx.currentTime, 0.05);
+            }
+            return;
+        }
+
+        const dx = game.goal.x - game.player.x;
+        const dy = game.goal.y - game.player.y;
+        const dGoal = Math.hypot(dx, dy);
+
+        const targetAngle = Math.atan2(dy, dx);
+        const relative = normAngle(targetAngle - game.player.yaw);
+        const pan = clamp(Math.sin(relative), -1, 1);
+
+        // 遠處不是靜音，而是保持存在感與殘響
+        const nearDist = 90;
+        const farDist = 1500;
+
+        let t = 1 - clamp((dGoal - nearDist) / (farDist - nearDist), 0, 1);
+        const clarity = Math.pow(t, 1.35);
+
+        const facing = 1 - Math.abs(relative) / Math.PI;
+        const facingBoost = lerp(0.82, 1.0, facing);
+
+        // 乾聲：近時更大更清楚，但遠時仍保留底量
+        const dryFloor = 0.10;
+        const dryGain = lerp(dryFloor, 1.0, clarity) * facingBoost;
+        const dryCutoff = lerp(1400, 18000, clarity);
+
+        // 濕聲：遠時更明顯，近時比較收斂
+        const wetGain = lerp(0.18, 0.035, clarity);
+        const wetPan = pan * 0.35;
+        const wetColor = lerp(1600, 4200, clarity);
+        const feedback = lerp(0.30, 0.16, clarity);
+
+        audio.musicDryPanner.pan.setTargetAtTime(pan, audio.ctx.currentTime, 0.03);
+        audio.musicDryGain.gain.setTargetAtTime(dryGain, audio.ctx.currentTime, 0.05);
+        audio.musicDryFilter.frequency.setTargetAtTime(dryCutoff, audio.ctx.currentTime, 0.08);
+
+        audio.musicWetPanner.pan.setTargetAtTime(wetPan, audio.ctx.currentTime, 0.05);
+        audio.musicWetGain.gain.setTargetAtTime(wetGain, audio.ctx.currentTime, 0.06);
+        audio.musicWetPreFilter.frequency.setTargetAtTime(wetColor, audio.ctx.currentTime, 0.08);
+        audio.musicWetFeedbackFilter.frequency.setTargetAtTime(wetColor * 0.8, audio.ctx.currentTime, 0.08);
+        audio.musicWetFeedbackGain.gain.setTargetAtTime(feedback, audio.ctx.currentTime, 0.08);
+    }
+
+    function syncTrackStart() {
+        if (!audio || !trackLoaded) return;
+
+        musicEl.pause();
+        musicEl.currentTime = 0;
+
+        game.audioStartedAt = audio.ctx.currentTime + 0.12;
+        game.nextBeatTime = game.audioStartedAt;
+        game.beatIndex = 0;
+        game.lastStepAt = -999;
+
+        audio.musicDryGain.gain.setValueAtTime(0.0001, audio.ctx.currentTime);
+        audio.musicWetGain.gain.setValueAtTime(0.0001, audio.ctx.currentTime);
+
+        musicEl.play().catch(err => {
+            console.warn('music play blocked:', err);
+            centerText.textContent = 'CLICK AGAIN TO START AUDIO';
+        });
+    }
+
+    function resetWorld() {
+        game.state = 'playing';
+        game.time = 0;
+        game.lastFrame = performance.now() / 1000;
+
+        game.stepRing = 0;
+        game.stepRingStrong = 0;
+        game.winPulse = 0;
+        game.guideText = '';
+        game.guideTextTimer = 0;
+        game.message = '追著音樂走';
+        game.lastStepAt = -999;
+
+        game.player.x = 0;
+        game.player.y = 0;
+        game.player.yaw = 0;
+        game.player.speed = 0;
+
+        spawnGoal();
+        syncTrackStart();
     }
 
     function movementVector() {
@@ -631,30 +663,28 @@
         return { mx, my, moving: len > 0 };
     }
 
+    function triggerStep(isOnBeat) {
+        if (isOnBeat) {
+            playFootstep(true);
+            game.stepRing = 1;
+            game.stepRingStrong = 1;
+        } else {
+            playFootstep(false);
+            game.stepRing = 0.45;
+            game.stepRingStrong = 0;
+        }
+        game.lastStepAt = game.time;
+    }
+
     function audioScheduler() {
         if (!audio || game.state !== 'playing') return;
+
         const now = audio.ctx.currentTime;
         const lookAhead = 0.15;
 
         while (game.nextBeatTime < now + lookAhead) {
             const when = game.nextBeatTime;
-            const beatIndex = game.beatIndex;
-
-            // 正式關：有音樂
-            if (game.mode === 'stage') {
-                scheduleKick(when);
-                scheduleBass(when, beatIndex);
-                schedulePad(when, beatIndex);
-
-                // 加一點八分帽聲，讓節奏存在，但不直接顯示 BPM 輔助
-                scheduleHat(when + game.beatInterval * 0.5, 0.014);
-                if (beatIndex % 2 === 1) scheduleHat(when, 0.012);
-            }
-
-            // 教學關：保留 metronome 輔助
-            if (game.mode === 'tutorial') {
-                scheduleMetronome(when);
-            }
+            const phase = currentTutorialPhase();
 
             const dx = game.goal.x - game.player.x;
             const dy = game.goal.y - game.player.y;
@@ -662,59 +692,44 @@
             const relative = normAngle(targetAngle - game.player.yaw);
             const dGoal = Math.hypot(dx, dy);
 
-            // 方向聲兩個模式都保留，因為這是核心導航，不是額外 BPM 顯示器
-            scheduleGuidePulse(when, relative, dGoal);
-
-            if (game.mode === 'tutorial') {
-                if (Math.abs(relative) < 0.18) game.guideText = '方向正確';
-                else if (relative > 0) game.guideText = '目標在右邊';
-                else game.guideText = '目標在左邊';
-                game.lastGuideText = performance.now() / 1000;
+            if (phase === 0) {
+                scheduleMetronome(when);
+                scheduleGuidePulse(when, relative, dGoal, true);
+            } else if (phase === 1) {
+                scheduleGuidePulse(when, relative, dGoal, false);
             }
 
-            game.beatIndex++;
             game.nextBeatTime += game.beatInterval;
+            game.beatIndex++;
         }
-    }
-
-    function startGame() {
-        ensureAudio();
-        resetWorld();
-        game.started = true;
-        panel.classList.add('hidden');
-        setTimeout(() => overlay.style.display = 'none', 280);
-        centerText.textContent = game.mode === 'tutorial' ? 'FOLLOW THE PULSE' : 'LISTEN';
     }
 
     function update(dt) {
         if (game.state !== 'playing' || !audio) return;
 
         game.time += dt;
+        game.stepRing = Math.max(0, game.stepRing - dt * 2.0);
+        game.stepRingStrong = Math.max(0, game.stepRingStrong - dt * 2.4);
+        game.winPulse = Math.max(0, game.winPulse - dt * 1.5);
+        game.guideTextTimer = Math.max(0, game.guideTextTimer - dt);
+
+        updateSpatialMusic();
 
         const nowAudio = audio.ctx.currentTime;
         const beat = onBeatStrength(nowAudio);
-
-        game.beatFlash = Math.max(game.beatFlash - dt * 2.6, 0);
-        if (beat > 0.88) game.beatFlash = Math.max(game.beatFlash, beat);
-
-        game.successPulse = Math.max(0, game.successPulse - dt * 2.2);
-        game.winPulse = Math.max(0, game.winPulse - dt * 1.5);
-        game.deadPulse = Math.max(0, game.deadPulse - dt * 1.5);
+        const phase = currentTutorialPhase();
 
         const { mx, my, moving } = movementVector();
         const sprint = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
 
-        let baseSpeed = 60;
-        let pulseBoost = lerp(0.32, 2.25, beat);
+        let baseSpeed = 62;
+        let pulseBoost = lerp(0.55, 1.95, beat);
         let speed = baseSpeed * pulseBoost;
-        if (sprint) speed *= 1.55;
+        if (sprint) speed *= 1.45;
 
-        // ===== 修正後的移動方向 =====
-        // 黃線 = player.yaw 朝向
-        // W = 往黃線方向前進
+        // W 對齊朝向
         const cos = Math.cos(game.player.yaw);
         const sin = Math.sin(game.player.yaw);
-
         const forwardX = cos;
         const forwardY = sin;
         const rightX = -sin;
@@ -727,57 +742,38 @@
         game.player.y += worldY * speed * dt;
         game.player.speed = moving ? speed : 0;
 
-        if (moving) {
-            if (beat > 0.72) {
-                game.threat -= 0.18 * dt;
-                game.successPulse = 1;
-                centerText.textContent = game.mode === 'tutorial' ? 'ON BEAT' : '';
-                if (game.time % (game.beatInterval * 0.8) < dt) playFootstep(true);
-            } else if (beat < 0.22) {
-                game.threat += 0.34 * dt;
-                centerText.textContent = game.mode === 'tutorial' ? 'OFF BEAT' : '';
-                if (game.time % 0.22 < dt) playFootstep(false);
-            } else {
-                game.threat += 0.05 * dt;
-                if (game.mode === 'tutorial') centerText.textContent = '';
-            }
-
-            if (sprint) game.threat += 0.08 * dt;
-        } else {
-            game.threat -= 0.09 * dt;
-            if (game.mode === 'tutorial') centerText.textContent = '';
-        }
-
-        // 撞世界邊界
         const r = Math.hypot(game.player.x, game.player.y);
         if (r > game.worldRadius) {
             const ang = Math.atan2(game.player.y, game.player.x);
             game.player.x = Math.cos(ang) * game.worldRadius;
             game.player.y = Math.sin(ang) * game.worldRadius;
-            game.threat += 0.1 * dt;
         }
 
-        game.threat = clamp(game.threat, 0, 1);
+        if (moving) {
+            const minCadence = sprint ? game.beatInterval * 0.55 : game.beatInterval * 0.72;
+            if (game.time - game.lastStepAt >= minCadence) {
+                if (beat > 0.72) {
+                    triggerStep(true);
+                } else if (beat < 0.22) {
+                    triggerStep(false);
+                }
+            }
+        }
 
-        if (game.threat > 0.55 && Math.random() < dt * 1.1) {
-            playThreatBlip(game.threat);
+        // 不再顯示 ON BEAT / OFF BEAT，圈只在踩步時出
+        if (game.state === 'playing') {
+            centerText.textContent = '';
         }
 
         const dGoal = dist(game.player.x, game.player.y, game.goal.x, game.goal.y);
         if (dGoal <= game.goalRadius) {
             game.state = 'win';
             game.winPulse = 1;
-            game.message = '你抵達出口';
-            centerText.textContent = 'ESCAPE CONFIRMED';
+            game.message = '你找到音源了';
+            centerText.textContent = 'SOURCE FOUND';
+            audio.musicDryGain.gain.setTargetAtTime(0.0001, audio.ctx.currentTime, 0.08);
+            audio.musicWetGain.gain.setTargetAtTime(0.0001, audio.ctx.currentTime, 0.12);
             playWinTone();
-        }
-
-        if (game.threat >= 1) {
-            game.state = 'dead';
-            game.deadPulse = 1;
-            game.message = '你被聲音吞掉了';
-            centerText.textContent = 'SIGNAL LOST';
-            playDeadTone();
         }
     }
 
@@ -788,50 +784,45 @@
     }
 
     function drawPulseRing() {
-        const intensity = game.beatFlash * 0.75 + game.successPulse * 0.35;
+        const intensity = Math.max(game.stepRing, game.stepRingStrong * 1.15);
         if (intensity <= 0.01 && game.state === 'playing') return;
 
-        const r = 18 + (1 - game.beatFlash) * 72;
+        const strong = game.stepRingStrong > 0.01;
+        const r = strong
+            ? 14 + (1 - game.stepRingStrong) * 86
+            : 12 + (1 - game.stepRing) * 58;
 
         ctx.save();
         ctx.translate(W / 2, H / 2);
 
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, TAU);
-        ctx.strokeStyle = `rgba(109,240,255,${0.08 + intensity * 0.18})`;
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = strong
+            ? `rgba(109,240,255,${0.08 + intensity * 0.22})`
+            : `rgba(190,210,255,${0.05 + intensity * 0.12})`;
+        ctx.lineWidth = strong ? 1.8 : 1.2;
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(0, 0, 2.2, 0, TAU);
-        ctx.fillStyle = `rgba(220,240,255,${0.24 + intensity * 0.2})`;
+        ctx.arc(0, 0, strong ? 2.3 : 1.8, 0, TAU);
+        ctx.fillStyle = strong
+            ? `rgba(220,240,255,${0.18 + intensity * 0.22})`
+            : `rgba(220,230,255,${0.10 + intensity * 0.10})`;
         ctx.fill();
 
         ctx.restore();
     }
 
-    function drawThreatVignette() {
-        const a = game.threat * 0.34 + game.deadPulse * 0.45;
-        if (a <= 0.01) return;
+    function drawCenterGlow() {
+        const glow = Math.max(game.stepRing * 0.45, game.stepRingStrong * 0.7);
         const g = ctx.createRadialGradient(
-            W / 2, H / 2, Math.min(W, H) * 0.22,
-            W / 2, H / 2, Math.max(W, H) * 0.72
+            W / 2, H / 2, 0,
+            W / 2, H / 2, Math.max(W, H) * 0.48
         );
-        g.addColorStop(0, `rgba(255,0,0,0)`);
-        g.addColorStop(1, `rgba(255,40,40,${a})`);
+        g.addColorStop(0, `rgba(255,255,255,${0.012 + glow * 0.035})`);
+        g.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, W, H);
-    }
-
-    function drawNoise() {
-        const amount = Math.floor(60 + game.threat * 420 + game.deadPulse * 560);
-        for (let i = 0; i < amount; i++) {
-            const x = Math.random() * W;
-            const y = Math.random() * H;
-            const alpha = Math.random() * (0.02 + game.threat * 0.06 + game.deadPulse * 0.09);
-            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-            ctx.fillRect(x, y, 1.2, 1.2);
-        }
     }
 
     function drawStateFlash() {
@@ -839,9 +830,16 @@
             ctx.fillStyle = `rgba(109,240,255,${game.winPulse * 0.22})`;
             ctx.fillRect(0, 0, W, H);
         }
-        if (game.deadPulse > 0.01) {
-            ctx.fillStyle = `rgba(255,50,50,${game.deadPulse * 0.2})`;
-            ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawNoise() {
+        const amount = 70;
+        for (let i = 0; i < amount; i++) {
+            const x = Math.random() * W;
+            const y = Math.random() * H;
+            const alpha = Math.random() * 0.02;
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            ctx.fillRect(x, y, 1.2, 1.2);
         }
     }
 
@@ -855,20 +853,17 @@
         const s = size / (game.worldRadius * 2);
 
         ctx.save();
-
         ctx.fillStyle = 'rgba(6,10,18,0.76)';
         ctx.fillRect(x, y, size, size);
         ctx.strokeStyle = 'rgba(130,160,255,0.35)';
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, size, size);
 
-        // 世界圓
         ctx.beginPath();
         ctx.arc(x + size / 2, y + size / 2, game.worldRadius * s, 0, TAU);
         ctx.strokeStyle = 'rgba(100,140,255,0.24)';
         ctx.stroke();
 
-        // 目標
         ctx.beginPath();
         ctx.arc(
             x + size / 2 + game.goal.x * s,
@@ -880,15 +875,14 @@
         ctx.fillStyle = '#6df0ff';
         ctx.fill();
 
-        // 玩家
         const px = x + size / 2 + game.player.x * s;
         const py = y + size / 2 + game.player.y * s;
+
         ctx.beginPath();
         ctx.arc(px, py, 4, 0, TAU);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
 
-        // 黃線 = 朝向
         ctx.beginPath();
         ctx.moveTo(px, py);
         ctx.lineTo(
@@ -901,54 +895,34 @@
 
         ctx.font = '12px Segoe UI';
         ctx.fillStyle = '#9ab2ff';
-        ctx.fillText(`DEBUG / ${game.mode.toUpperCase()}`, x + 10, y + 16);
-
+        ctx.fillText('DEBUG / LEVEL 1', x + 10, y + 16);
         ctx.restore();
     }
 
     function render() {
         drawBackground();
+        drawCenterGlow();
         drawPulseRing();
-        drawThreatVignette();
         drawNoise();
         drawStateFlash();
         drawDebugMap();
     }
 
     function updateHUD() {
+        const phase = currentTutorialPhase();
         const dGoal = dist(game.player.x, game.player.y, game.goal.x, game.goal.y);
         const yawDeg = ((game.player.yaw * 180 / Math.PI) % 360 + 360) % 360;
-        const threatPercent = Math.round(game.threat * 100);
 
-        let threatClass = 'good';
-        if (threatPercent >= 70) threatClass = 'warn';
-        else if (threatPercent >= 35) threatClass = 'gold';
+        hudLeft.innerHTML =
+            `<span class="label">關卡</span>：<span class="gold">LEVEL 1 / 0 怪物</span><br>` +
+            `<span class="label">狀態</span>：${game.state === 'playing' ? '<span class="good">探索中</span>' : game.state === 'win' ? '<span class="good">已找到音源</span>' : game.state === 'ended' ? '音樂結束' : '待機'}<br>` +
+            `<span class="label">階段</span>：${phaseLabel(phase)}<br>` +
+            `<span class="label">提示</span>：${game.guideTextTimer > 0 ? game.guideText : '聽音樂定位'}`;
 
-        if (game.mode === 'tutorial') {
-            hudLeft.innerHTML = `
-                <span class="label">模式</span>：<span class="good">Tutorial</span><br>
-                <span class="label">狀態</span>：${game.state === 'playing' ? '<span class="good">探索中</span>' :
-                    game.state === 'win' ? '<span class="good">已逃出</span>' :
-                    game.state === 'dead' ? '<span class="warn">死亡</span>' : '待機'}<br>
-                <span class="label">方向提示</span>：${game.guideText || '等待下一拍'}<br>
-                <span class="label">訊息</span>：${game.message}
-            `;
-        } else {
-            hudLeft.innerHTML = `
-                <span class="label">模式</span>：<span class="gold">Stage</span><br>
-                <span class="label">狀態</span>：${game.state === 'playing' ? '<span class="gold">正式關</span>' :
-                    game.state === 'win' ? '<span class="good">已逃出</span>' :
-                    game.state === 'dead' ? '<span class="warn">死亡</span>' : '待機'}<br>
-                <span class="label">訊息</span>：${game.message}<br>
-                <span class="label">提示</span>：音樂存在時，不再顯示 BPM 輔助
-            `;
-        }
-
-        hudRight.innerHTML = `
-            <span class="label">危險值</span>：<span class="${threatClass}">${threatPercent}%</span><br>
-            <span class="label">朝向</span>：${yawDeg.toFixed(0)}°<br>
-            <span class="label">速度</span>：${Math.round(game.player.speed)}${game.showDebug ? `<br><span class="label">距離</span>：${Math.round(dGoal)}` : ''}
-        `;
+        hudRight.innerHTML =
+            `<span class="label">朝向</span>：${yawDeg.toFixed(0)}°<br>` +
+            `<span class="label">速度</span>：${Math.round(game.player.speed)}` +
+            (game.showDebug ? `<br><span class="label">距離</span>：${Math.round(dGoal)}` : '');
     }
 
     function loop(tMs) {
@@ -964,11 +938,24 @@
     }
     requestAnimationFrame(loop);
 
-    canvas.addEventListener('click', () => {
-        if (!game.started) {
-            startGame();
+    function startGame() {
+        if (!trackLoaded || !musicEl.src) {
+            centerText.textContent = 'PLEASE LOAD 1.WAV FIRST';
+            game.message = '先載入音檔';
+            return;
         }
-        if (document.pointerLockElement !== canvas) {
+
+        ensureAudio();
+        resetWorld();
+        game.started = true;
+        panel.classList.add('hidden');
+        setTimeout(() => overlay.style.display = 'none', 280);
+        centerText.textContent = 'FOLLOW THE MUSIC';
+    }
+
+    canvas.addEventListener('click', () => {
+        if (!game.started) startGame();
+        if (document.pointerLockElement !== canvas && trackLoaded) {
             canvas.requestPointerLock();
         }
     });
@@ -985,22 +972,14 @@
     document.addEventListener('keydown', (e) => {
         input.keys.add(e.code);
 
-        if (e.code === 'Digit1') {
-            game.mode = 'tutorial';
-            updateModeUI();
-            if (!game.started) centerText.textContent = 'TUTORIAL SELECTED';
-        }
-
-        if (e.code === 'Digit2') {
-            game.mode = 'stage';
-            updateModeUI();
-            if (!game.started) centerText.textContent = 'STAGE SELECTED';
-        }
-
         if (e.code === 'KeyR') {
+            if (!trackLoaded) {
+                centerText.textContent = 'LOAD TRACK FIRST';
+                return;
+            }
             ensureAudio();
             resetWorld();
-            centerText.textContent = game.mode === 'tutorial' ? 'REBOOT / TUTORIAL' : 'REBOOT / STAGE';
+            centerText.textContent = 'RESTART';
             if (!game.started) {
                 game.started = true;
                 panel.classList.add('hidden');
@@ -1013,7 +992,8 @@
             debugBadge.classList.toggle('show', game.showDebug);
         }
 
-        if ((game.state === 'win' || game.state === 'dead') && e.code === 'Space') {
+        if ((game.state === 'win' || game.state === 'ended') && e.code === 'Space') {
+            if (!trackLoaded) return;
             ensureAudio();
             resetWorld();
         }
@@ -1023,7 +1003,70 @@
         input.keys.delete(e.code);
     });
 
-    updateModeUI();
+    function setTrackFromUrl(url, label) {
+        trackLoaded = false;
+        musicEl.pause();
+        musicEl.src = url;
+        musicEl.load();
+        trackStatus.textContent = `TRACK: LOADING / ${label}`;
+        centerText.textContent = `TRACK SELECTED: ${label}`;
+        game.message = '音檔已選擇，等待載入';
+    }
+
+    musicPicker.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (currentTrackUrl) URL.revokeObjectURL(currentTrackUrl);
+        currentTrackUrl = URL.createObjectURL(file);
+        setTrackFromUrl(currentTrackUrl, file.name);
+    });
+
+    musicEl.addEventListener('loadeddata', () => {
+        trackLoaded = true;
+        const name = (() => {
+            try {
+                return decodeURIComponent(musicEl.currentSrc.split('/').pop() || 'TRACK');
+            } catch {
+                return 'TRACK';
+            }
+        })();
+        trackStatus.textContent = `TRACK: LOADED / ${name}`;
+        centerText.textContent = 'TRACK LOADED';
+        game.message = '音檔已載入，點擊開始';
+    });
+
+    musicEl.addEventListener('canplaythrough', () => {
+        trackLoaded = true;
+    });
+
+    musicEl.addEventListener('error', () => {
+        trackLoaded = false;
+        trackStatus.textContent = 'TRACK: AUTO LOAD FAILED / PICK FILE';
+        centerText.textContent = 'AUTO LOAD FAILED';
+        game.message = '請用左下角手動選音檔';
+        console.error('music load failed:', musicEl.currentSrc);
+    });
+
+    musicEl.addEventListener('ended', () => {
+        if (game.state === 'playing') {
+            game.state = 'ended';
+            game.message = '音樂結束了';
+            centerText.textContent = 'TRACK ENDED';
+            if (audio) {
+                audio.musicDryGain.gain.setTargetAtTime(0.0001, audio.ctx.currentTime, 0.08);
+                audio.musicWetGain.gain.setTargetAtTime(0.0001, audio.ctx.currentTime, 0.12);
+            }
+        }
+    });
+
+    // 自動嘗試同資料夾的 1.wav
+    setTimeout(() => {
+        if (musicEl.getAttribute('src')) {
+            musicEl.load();
+        }
+    }, 0);
+
     render();
 })();
 </script>
